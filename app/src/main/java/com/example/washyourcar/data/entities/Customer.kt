@@ -1,4 +1,4 @@
-package com.example.washyourcar.models.enitities
+package com.example.washyourcar.data.enitities
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

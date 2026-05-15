@@ -1,4 +1,4 @@
-package com.example.washyourcar.models.enitities
+package com.example.washyourcar.data.enitities
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "employees")
 data class Employee(
     @PrimaryKey val firebaseUid: String,
-    val carWashId: Int,
+    val carWashId: Int?,
     val firstName: String,
     val lastName: String,
     val email: String,

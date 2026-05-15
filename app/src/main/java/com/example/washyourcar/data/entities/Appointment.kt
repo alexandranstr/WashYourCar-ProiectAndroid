@@ -1,4 +1,4 @@
-package com.example.washyourcar.models.enitities
+package com.example.washyourcar.data.enitities
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -8,6 +8,7 @@ data class Appointment(
     @PrimaryKey val appointmentId: String,
     val customerId: String,
     val carWashId: Int,
+    val employeeId: String?,
     val serviceIds: List<Int>,
     val licensePlate: String,
     val startTime: Long,

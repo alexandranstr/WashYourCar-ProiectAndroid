@@ -1,4 +1,4 @@
-package com.example.washyourcar.models.enitities
+package com.example.washyourcar.data.enitities
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -11,5 +11,8 @@ data class CarWash(
     val address: String,
     val city: String,
     val phoneNumber: String,
-    val rating: Float
+    val rating: Float,
+    val accessCode: String,
+    val openTime: Long,
+    val closeTime: Long
 )
