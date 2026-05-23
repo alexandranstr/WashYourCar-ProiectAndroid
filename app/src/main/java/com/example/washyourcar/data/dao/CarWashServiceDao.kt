@@ -6,7 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.example.washyourcar.data.entities.CarWashServiceDetails
 import com.example.washyourcar.data.entities.Service
-import com.example.washyourcar.data.enitities.CarWashService
+import com.example.washyourcar.data.entities.CarWashService
 
 @Dao
 interface CarWashServiceDao {

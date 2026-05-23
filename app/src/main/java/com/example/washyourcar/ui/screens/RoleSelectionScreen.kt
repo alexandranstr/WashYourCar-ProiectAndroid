@@ -28,7 +28,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.DrawScope
 @Composable
-fun RoleSelectionScreen(onNavigate: (String) -> Unit) {
+fun RoleSelectionScreen(onClientSelected: () -> Unit,
+                         onEmployeeSelected: () -> Unit,
+                         onOwnerSelected: () -> Unit,
+                         onRegisterClientSelected: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -63,14 +66,18 @@ fun RoleSelectionScreen(onNavigate: (String) -> Unit) {
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             RoleButton("Client", Icons.Default.DirectionsCar) {
-                onNavigate("login_client")
+                onClientSelected()
             }
-            RoleButton("Owner", Icons.Default.Person) {}
+            RoleButton("Owner", Icons.Default.Person) {
+                onOwnerSelected()
+            }
         }
 
         Spacer(modifier = Modifier.height(30.dp))
 
-        RoleButton("Employee", Icons.Default.Settings) {}
+        RoleButton("Employee", Icons.Default.Settings) {
+            onEmployeeSelected()
+        }
 
         Spacer(modifier = Modifier.weight(1f))
 
@@ -80,11 +87,11 @@ fun RoleSelectionScreen(onNavigate: (String) -> Unit) {
         ) {
             Text("Create your account as:", color = Color.Gray, fontSize = 14.sp)
             Row(modifier = Modifier.padding(top = 8.dp)) {
-                FooterLink("Client") { onNavigate("register_client") }
+                FooterLink("Client") { onRegisterClientSelected() }
                 Text(" • ", color = Color.Black)
-                FooterLink("Owner") {}
+                FooterLink("Owner") {  }
                 Text(" • ", color = Color.Black)
-                FooterLink("Employee") {}
+                FooterLink("Employee") {  }
             }
         }
     }
@@ -184,10 +191,4 @@ fun FooterLink(text: String, onClick: () -> Unit) {
         fontWeight = FontWeight.Bold,
         modifier = Modifier.clickable { onClick() }
     )
-}
-
-@Preview(showBackground = true, widthDp = 360, heightDp = 640)
-@Composable
-fun RoleSelectionPreview() {
-    RoleSelectionScreen(onNavigate = {})
 }

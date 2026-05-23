@@ -4,9 +4,9 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.example.washyourcar.data.enitities.Appointment
-import com.example.washyourcar.data.enitities.AppointmentWithDetails
-import com.example.washyourcar.data.enitities.AppointmentWithEmployeeName
+import com.example.washyourcar.data.entities.Appointment
+import com.example.washyourcar.data.entities.AppointmentWithDetails
+import com.example.washyourcar.data.entities.AppointmentWithEmployeeName
 
 @Dao
 interface AppointmentDao {

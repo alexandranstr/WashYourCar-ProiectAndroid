@@ -1,9 +1,8 @@
-package cst.unitbvfmi2026.ui.screens
+package com.example.washyourcar.ui.screens
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,20 +19,24 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import com.example.washyourcar.viewmodel.AuthViewModel
 
 @Composable
 fun LogInClientScreen(
-    onLoginClick: (String, String) -> Unit,
-    onRegisterClick: () -> Unit
+    viewModel: AuthViewModel,
+    onLoginSuccess: () -> Unit,
+    onNavigateToRegister: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+
+    val authState by viewModel.authState.collectAsState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -48,7 +51,7 @@ fun LogInClientScreen(
                 .background(Color(0xFF6A1B9A)),
             contentAlignment = Alignment.Center
         ) {
-            GlowingOrb()
+            LoginGlowingOrb()
             Text(
                 text = "Wash Your Car!",
                 style = TextStyle(
@@ -95,10 +98,23 @@ fun LogInClientScreen(
             )
         }
 
+        if (authState.errorMessage != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = authState.errorMessage ?: "Unknown error",
+                color = Color.Red,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(horizontal = 50.dp)
+            )
+        }
+
         Spacer(modifier = Modifier.height(40.dp))
 
         Button(
-            onClick = { onLoginClick(email, password) },
+            onClick = {
+                viewModel.login(email, password, onLoginSuccess)
+            },
+            enabled = !authState.isLoading,
             modifier = Modifier
                 .fillMaxWidth(0.75f)
                 .height(50.dp)
@@ -112,10 +128,13 @@ fun LogInClientScreen(
                     .background(Brush.verticalGradient(listOf(Color(0xFFB28BFF), Color(0xFF5A0F84)))),
                 contentAlignment = Alignment.Center
             ) {
-                Text("LOGIN", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                if (authState.isLoading) {
+                    Text("LOADING...", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                } else {
+                    Text("LOGIN", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
-
         Spacer(modifier = Modifier.height(60.dp))
 
         Text(
@@ -123,7 +142,7 @@ fun LogInClientScreen(
             color = Color.Gray,
             fontSize = 13.sp,
             modifier = Modifier
-                .clickable { onRegisterClick() }
+                .clickable { onNavigateToRegister() }
                 .padding(bottom = 20.dp)
         )
     }
@@ -152,7 +171,7 @@ fun ClearTextField(
         trailingIcon = {
             if (isPasswordInput) {
                 val image = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
-                val description = if (passwordVisible) "Ascunde parola" else "Arată parola"
+                val description = if (passwordVisible) "Hide password" else "Show password"
 
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                     Icon(imageVector = image, contentDescription = description, tint = Color(0xFF6A1B9A))
@@ -172,7 +191,7 @@ fun ClearTextField(
 
 
 @Composable
-fun GlowingOrb() {
+fun LoginGlowingOrb() {
     val infiniteTransition = rememberInfiniteTransition(label = "particles")
 
     val animProgress by infiniteTransition.animateFloat(
@@ -188,25 +207,25 @@ fun GlowingOrb() {
         val w = size.width
         val h = size.height
 
-        drawGlowingOrb(
+        drawLoginGlowingOrb(
             centerOffset = Offset(w * 0.2f + (animProgress * 100), h * 0.3f),
             radius = 150f,
             color = Color(0xFF00CED1)
         )
 
-        drawGlowingOrb(
+        drawLoginGlowingOrb(
             centerOffset = Offset(w * 0.8f - (animProgress * 150), h * 0.6f),
             radius = 200f,
             color = Color(0xFFB28BFF)
         )
 
-        drawGlowingOrb(
+        drawLoginGlowingOrb(
             centerOffset = Offset(w * 0.5f, h * 0.2f + (animProgress * 80)),
             radius = 120f,
             color = Color.White
         )
 
-        drawGlowingOrb(
+        drawLoginGlowingOrb(
             centerOffset = Offset(w * 0.1f, h * 0.8f),
             radius = 180f,
             color = Color(0xFFD0A8FF)
@@ -214,7 +233,7 @@ fun GlowingOrb() {
     }
 }
 
-fun DrawScope.drawGlowingOrb(centerOffset: Offset, radius: Float, color: Color) {
+fun DrawScope.drawLoginGlowingOrb(centerOffset: Offset, radius: Float, color: Color) {
     drawCircle(
         brush = Brush.radialGradient(
             colors = listOf(color.copy(alpha = 0.4f), Color.Transparent),
@@ -224,10 +243,4 @@ fun DrawScope.drawGlowingOrb(centerOffset: Offset, radius: Float, color: Color) 
         center = centerOffset,
         radius = radius
     )
-}
-
-@Preview(showBackground = true, widthDp = 360, heightDp = 640)
-@Composable
-fun LogInClientPreview() {
-    LogInClientScreen(onLoginClick = { _, _ -> }, onRegisterClick = {})
 }

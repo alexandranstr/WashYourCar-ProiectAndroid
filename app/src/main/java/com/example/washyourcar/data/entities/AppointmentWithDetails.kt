@@ -1,7 +1,6 @@
-package com.example.washyourcar.data.enitities
+package com.example.washyourcar.data.entities
 
 import androidx.room.Embedded
-import com.example.washyourcar.models.enitities.Appointment
 
 data class AppointmentWithDetails (
     @Embedded val appointment: Appointment,

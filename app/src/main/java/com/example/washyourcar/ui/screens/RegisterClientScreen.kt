@@ -26,10 +26,12 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.washyourcar.viewmodel.AuthViewModel
 
 @Composable
 fun RegisterClientScreen(
-    onRegisterClick: (String, String, String, String, String, String, String) -> Unit,
+    viewModel: AuthViewModel,
+    onRegisterSuccess: () -> Unit,
     onBackClick: () -> Unit
 ) {
     var familyName by remember { mutableStateOf("") }
@@ -41,6 +43,7 @@ fun RegisterClientScreen(
     var carModel by remember { mutableStateOf("") }
 
     val scrollState = rememberScrollState()
+    val authState by viewModel.authState.collectAsState()
 
     Column(
         modifier = Modifier
@@ -82,21 +85,61 @@ fun RegisterClientScreen(
             RegClearTextField(label = "License Plate", value = carPlate, onValueChange = { carPlate = it })
             RegClearTextField(label = "Car Model", value = carModel, onValueChange = { carModel = it })
 
+            if (authState.errorMessage != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = authState.errorMessage ?: "Error",
+                    color = Color.Red,
+                    fontSize = 14.sp
+                )
+            }
+
             Spacer(modifier = Modifier.height(20.dp))
 
             Button(
-                onClick = { onRegisterClick(familyName, givenName, email, phone, password, carPlate, carModel) },
-                modifier = Modifier.fillMaxWidth().height(55.dp).clip(RoundedCornerShape(30.dp)),
+                onClick = {
+                    viewModel.register(
+                        nume = familyName,
+                        prenume = givenName,
+                        email = email,
+                        telefon = phone,
+                        parola = password,
+                        numarInmatriculare = carPlate,
+                        modelMasina = carModel,
+                        onSuccess = onRegisterSuccess
+                    )
+                },
+                enabled = !authState.isLoading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(55.dp)
+                    .clip(RoundedCornerShape(30.dp)),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                 contentPadding = PaddingValues()
             ) {
                 Box(
-                    modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFFB28BFF), Color(0xFF5A0F84)))),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Brush.verticalGradient(listOf(Color(0xFFB28BFF), Color(0xFF5A0F84)))),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("CREATE", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    if (authState.isLoading) {
+                        Text("CREATING...", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    } else {
+                        Text("CREATE", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
+
+            Text(
+                text = "Already have an account? Sign In",
+                color = Color.Gray,
+                fontSize = 13.sp,
+                modifier = Modifier
+                    .clickable { onBackClick() }
+                    .padding(vertical = 16.dp)
+            )
+
             Spacer(modifier = Modifier.height(40.dp))
         }
     }
@@ -159,20 +202,4 @@ fun DrawScope.drawRegGlowingOrb(centerOffset: Offset, radius: Float, color: Colo
         center = centerOffset,
         radius = radius
     )
-}
-
-@Preview(showBackground = true, widthDp = 360, heightDp = 640)
-@Composable
-fun RegisterClientPreview() {
-
-    MaterialTheme {
-        RegisterClientScreen(
-            onRegisterClick = { family, given, email, phone, pass, plate, model ->
-
-            },
-            onBackClick = {
-
-            }
-        )
-    }
 }
