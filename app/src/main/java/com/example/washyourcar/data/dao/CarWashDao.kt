@@ -25,20 +25,20 @@ interface CarWashDao {
     @Query("SELECT * FROM car_washes ORDER BY rating DESC")
     suspend fun getAllCarWashes(): List<CarWash>
 
-    @Query("SELECT * FROM car_washes WHERE city = :city ORDER BY rating DESC")
-    suspend fun getCarWashesByCity(city: String): List<CarWash>
+    @Query("SELECT * FROM car_washes WHERE (:city IS NULL OR city = :city) ORDER BY rating DESC")
+    suspend fun getCarWashesByCity(city: String?): List<CarWash>
 
-    @Query("SELECT * FROM car_washes WHERE city = :city AND name LIKE '%' || :searchQuery || '%' ORDER BY rating DESC")
-    suspend fun searchByName(city: String, searchQuery: String): List<CarWash>
+    @Query("SELECT * FROM car_washes WHERE (:city IS NULL OR city = :city) AND name LIKE '%' || :searchQuery || '%' ORDER BY rating DESC")
+    suspend fun searchByName(city: String?, searchQuery: String): List<CarWash>
 
     @Query("""
         SELECT DISTINCT cw.* FROM car_washes cw
         INNER JOIN car_wash_services cws ON cw.carWashId = cws.carWashId
         INNER JOIN services s ON cws.serviceId = s.serviceId
-        WHERE cw.city = :city AND s.name IN (:serviceNames)
+        WHERE (:city IS NULL OR cw.city = :city) AND s.name IN (:serviceNames)
         ORDER BY cw.rating DESC
     """)
-    suspend fun filterByServices(city: String, serviceNames: List<String>): List<CarWash>
+    suspend fun filterByServices(city: String?, serviceNames: List<String>): List<CarWash>
 
     @Query("SELECT name FROM car_washes WHERE carWashId = :carWashId")
     suspend fun getCarWashNameById(carWashId: Int): String?

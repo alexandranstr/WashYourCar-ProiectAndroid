@@ -17,7 +17,7 @@ interface CarWashServiceDao {
     @Query("UPDATE car_wash_services SET price = :newPrice, duration = :newDuration WHERE carWashId = :carWashId AND serviceId = :serviceId")
     suspend fun updateOffer(carWashId: Int, serviceId: Int, newPrice: Float, newDuration: Int)
 
-    @Query("DELETE FROM car_wash_services WHERE carWashId = :carWashId AND serviceId = :serviceId")
+    @Query("DELETE FROM car_wash_services WHERE carWashId = :CarWashId AND serviceId = :serviceId")
     suspend fun deactivateService(CarWashId: Int, serviceId: Int)
 
     @Query("""

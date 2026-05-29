@@ -65,12 +65,18 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
         }
 
         composable(Screen.Home.route) {
+            val currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
             HomeScreen(
+                firebaseUid = currentUid,
                 onLogout = {
                     authViewModel.logout()
                     navController.navigate(Screen.RoleSelection.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
+                },
+                onCarWashClick = { carWashId ->
+
                 }
             )
         }
