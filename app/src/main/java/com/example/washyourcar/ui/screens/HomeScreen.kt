@@ -23,6 +23,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.washyourcar.data.entities.CarWash
 import com.example.washyourcar.ui.viewmodel.ClientHomeViewModel
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.Date
+import androidx.compose.foundation.background
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,14 +46,42 @@ fun HomeScreen(
     val selectedFilters by viewModel.selectedFilters.collectAsState()
     val currentCustomer by viewModel.currentCustomer.collectAsState()
     val customerCar by viewModel.customerCar.collectAsState()
-
+    val activeAppointment by viewModel.activeAppointment.collectAsState()
+    var appointmentsExpanded by remember { mutableStateOf(false) }
     var filterBoxVisible by remember { mutableStateOf(false) }
     var accountBoxExpanded by remember { mutableStateOf(false) }
+    var showCancelConfirmationDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(firebaseUid) {
         if (firebaseUid.isNotEmpty()) {
             viewModel.loadCustomerData(firebaseUid)
+            viewModel.loadActiveAppointment(firebaseUid)
         }
+    }
+
+    if (showCancelConfirmationDialog && activeAppointment != null) {
+        AlertDialog(
+            onDismissRequest = { showCancelConfirmationDialog = false },
+            title = { Text("Cancel Appointment?", fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F)) },
+            text = { Text("Are you sure you want to cancel your upcoming reservation? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.cancelAppointment(activeAppointment!!.appointmentId, firebaseUid)
+                        showCancelConfirmationDialog = false
+                    }
+                ) {
+                    Text("Yes, Cancel", fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCancelConfirmationDialog = false }) {
+                    Text("No, Keep it", fontWeight = FontWeight.Medium, color = Color.Gray)
+                }
+            },
+            shape = RoundedCornerShape(16.dp),
+            containerColor = Color.White
+        )
     }
 
     ModalNavigationDrawer(
@@ -110,14 +142,100 @@ fun HomeScreen(
                         }
 
                         Text(
-                            text = "My Appointments",
+                            text = "Next Appointment Details",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF6A1B9A),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { }
+                                .clickable { appointmentsExpanded = !appointmentsExpanded }
                                 .padding(vertical = 8.dp)
                         )
+
+                        AnimatedVisibility(visible = appointmentsExpanded) {
+                            if (activeAppointment != null) {
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                                    shape = RoundedCornerShape(12.dp),
+                                    elevation = CardDefaults.cardElevation(3.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        val dateFormatter = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+                                        val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+                                        val dateStr = dateFormatter.format(Date(activeAppointment!!.startTime))
+                                        val timeStr = timeFormatter.format(Date(activeAppointment!!.startTime))
+
+                                        Text(
+                                            text = "YOUR NEXT SLOT",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF6A1B9A),
+                                            modifier = Modifier
+                                                .background(Color(0xFFF3E5F5), RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+
+                                        val sharedPrefs = androidx.compose.ui.platform.LocalContext.current.getSharedPreferences("WashYourCarPrefs", android.content.Context.MODE_PRIVATE)
+                                        val savedWashName = sharedPrefs.getString("last_booked_wash_name", "Car Wash Station")
+
+                                        Text(
+                                            text = "📍 Location: $savedWashName",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.Black
+                                        )
+
+                                        Text(
+                                            text = "Date: $dateStr",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = Color.DarkGray
+                                        )
+                                        Text(
+                                            text = "Time: $timeStr",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = Color.DarkGray
+                                        )
+                                        Text(
+                                            text = "Plate: ${activeAppointment!!.licensePlate}",
+                                            fontSize = 13.sp,
+                                            color = Color.Gray
+                                        )
+
+                                        Spacer(modifier = Modifier.height(4.dp))
+
+                                        OutlinedButton(
+                                            onClick = { showCancelConfirmationDialog = true },
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFD32F2F)),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFCDD2)),
+                                            shape = RoundedCornerShape(8.dp),
+                                            modifier = Modifier.fillMaxWidth(),
+                                            contentPadding = PaddingValues(vertical = 4.dp)
+                                        ) {
+                                            Text("Cancel Appointment", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            } else {
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = "No upcoming appointments.",
+                                        fontSize = 13.sp,
+                                        color = Color.Gray,
+                                        modifier = Modifier.padding(12.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     Button(

@@ -9,7 +9,7 @@ data class Appointment(
     val customerId: String,
     val carWashId: Int,
     val employeeId: String?,
-    val serviceIds: List<Int>,
+    val serviceIds: Int,
     val licensePlate: String,
     val startTime: Long,
     val endTime: Long,

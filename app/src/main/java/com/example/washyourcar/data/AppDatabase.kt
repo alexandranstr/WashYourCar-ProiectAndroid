@@ -19,7 +19,8 @@ import kotlinx.coroutines.launch
         Service::class,
         CarWashService::class,
         Owner::class,
-        Employee::class
+        Employee::class,
+        Appointment::class
     ],
     version = 1,
     exportSchema = false
@@ -32,6 +33,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun carWashServiceDao(): CarWashServiceDao
     abstract fun ownerDao(): OwnerDao
     abstract fun employeeDao(): EmployeeDao
+
+    abstract fun appointmentDao(): AppointmentDao
 
     companion object {
         @Volatile

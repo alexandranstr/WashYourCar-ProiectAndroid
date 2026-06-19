@@ -18,6 +18,7 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
     private val carWashDao = database.carWashDao()
     private val customerDao = database.customerDao()
     private val carDao = database.carDao()
+    private val appointmentDao = database.appointmentDao()
 
     private val _carWashes = MutableStateFlow<List<CarWash>>(emptyList())
     val carWashes: StateFlow<List<CarWash>> = _carWashes.asStateFlow()
@@ -39,6 +40,9 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
 
     private val _customerCar = MutableStateFlow<Car?>(null)
     val customerCar: StateFlow<Car?> = _customerCar.asStateFlow()
+
+    private val _activeAppointment = MutableStateFlow<com.example.washyourcar.data.entities.Appointment?>(null)
+    val activeAppointment: StateFlow<com.example.washyourcar.data.entities.Appointment?> = _activeAppointment
 
     init {
         loadCities()
@@ -117,6 +121,20 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
                     _carWashes.value = carWashDao.getCarWashesByCity(city)
                 }
             }
+        }
+    }
+
+    fun loadActiveAppointment(customerId: String) {
+        viewModelScope.launch {
+            val currentTime = System.currentTimeMillis()
+            _activeAppointment.value = appointmentDao.getNextAppointmentForCustomer(customerId, currentTime)
+        }
+    }
+
+    fun cancelAppointment(appointmentId: String, customerId: String) {
+        viewModelScope.launch {
+            appointmentDao.updateStatus(appointmentId, "CANCELED")
+            loadActiveAppointment(customerId)
         }
     }
 }

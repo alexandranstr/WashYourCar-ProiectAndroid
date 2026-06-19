@@ -56,4 +56,7 @@ interface CarWashDao {
 
     @Query("SELECT ownerId FROM car_washes WHERE carWashId = :carWashId")
     suspend fun getOwnerIdByWashId(carWashId: Int): String
+
+    @Query("SELECT * FROM car_washes WHERE carWashId = :carWashId")
+    suspend fun getCarWashById(carWashId: Int): CarWash?
 }

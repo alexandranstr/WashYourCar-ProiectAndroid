@@ -1,7 +1,7 @@
 package com.example.washyourcar.data.network
 
 object RetrofitClient {
-    private const val BASE_URL = "https://github.com/alexandranstr/spalatorie-api"
+    private const val BASE_URL = "https://raw.githubusercontent.com/alexandranstr/spalatorie-api/refs/heads/main/"
 
     val apiService: ApiService by lazy {
         retrofit2.Retrofit.Builder()
