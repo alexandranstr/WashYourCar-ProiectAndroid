@@ -1,6 +1,5 @@
 package com.example.washyourcar.ui.viewmodel
 
-import android.view.View
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import com.example.washyourcar.models.ForecastResponse
@@ -21,13 +20,19 @@ class WeatherViewModel : ViewModel() {
             override fun onResponse(call: Call<ForecastResponse>, response: Response<ForecastResponse>){
                 if(response.isSuccessful && response.body() != null){
                     weatherList.clear()
-                    weatherList.addAll(response.body() !!.hourlyForecasts)
+                    weatherList.addAll(response.body()!!.hourlyForecasts)
+                    println("VREME SUCCES: Am primit ${weatherList.size} prognoze!")
                 }else{
                     errorMessage = "Eroare de la server"
+                    // Mesajul de eroare server apare în Logcat
+                    println("VREME EROARE SERVER: Cod ${response.code()}, Mesaj: ${response.message()}")
                 }
             }
+
             override fun onFailure(call: Call<ForecastResponse>, t: Throwable){
                 errorMessage = "Eroare conexiune: ${t.message}"
+                println("VREME CRASH/FAIL: ${t.localizedMessage}")
+                t.printStackTrace()
             }
         })
     }
