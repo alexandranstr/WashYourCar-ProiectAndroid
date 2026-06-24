@@ -20,11 +20,10 @@ class WeatherViewModel : ViewModel() {
             override fun onResponse(call: Call<ForecastResponse>, response: Response<ForecastResponse>){
                 if(response.isSuccessful && response.body() != null){
                     weatherList.clear()
-                    weatherList.addAll(response.body()!!.hourlyForecasts)
+                    weatherList.addAll(response.body()!!.list)
                     println("VREME SUCCES: Am primit ${weatherList.size} prognoze!")
                 }else{
                     errorMessage = "Eroare de la server"
-                    // Mesajul de eroare server apare în Logcat
                     println("VREME EROARE SERVER: Cod ${response.code()}, Mesaj: ${response.message()}")
                 }
             }

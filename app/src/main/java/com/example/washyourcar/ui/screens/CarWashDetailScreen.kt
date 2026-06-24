@@ -267,12 +267,12 @@ fun CarWashDetailScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = weather.dateTime,
+                                text = weather.dt_txt,
                                 fontSize = 14.sp,
                                 color = Color.DarkGray
                             )
                             Text(
-                                text = "${weather.mainData.temperature} °C",
+                                text = "${weather.main.temp} °C",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF6A1B9A)

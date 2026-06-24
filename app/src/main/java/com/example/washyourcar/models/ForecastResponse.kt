@@ -3,15 +3,14 @@ package com.example.washyourcar.models
 import com.google.gson.annotations.SerializedName
 
 data class ForecastResponse (
-    @SerializedName("list")
-    val hourlyForecasts : List<HourlyWeather>
+    val list: List<HourlyWeather>
     )
 
 data class HourlyWeather(
-    @SerializedName("main") val mainData: MainData,
-    @SerializedName("dt_txt") val dateTime: String
+    val main: MainData,
+    val dt_txt: String
 )
 
 data class MainData(
-    @SerializedName("temp") val temperature: Double
+    val temp: Double
 )
