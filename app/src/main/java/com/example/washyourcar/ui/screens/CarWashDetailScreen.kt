@@ -3,9 +3,11 @@ package com.example.washyourcar.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -23,6 +25,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.washyourcar.ui.viewmodel.WeatherViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,7 +34,8 @@ fun CarWashDetailScreen(
     carWashId: Int,
     firebaseUid: String,
     onBack: () -> Unit,
-    viewModel: CarWashDetailViewModel
+    viewModel: CarWashDetailViewModel,
+    weatherViewModel: WeatherViewModel = viewModel()
 ) {
     val carWash by viewModel.carWash.collectAsState()
     val availableSlots by viewModel.availableSlots.collectAsState()
@@ -60,6 +65,10 @@ fun CarWashDetailScreen(
             }
         }
     )
+
+    LaunchedEffect(Unit) {
+        weatherViewModel.fetchWeather("Brasov", "09981e4b7d1730200bcc5f422d1f6f85")
+    }
 
     LaunchedEffect(carWashId, firebaseUid) {
         viewModel.loadCarWashDetails(carWashId, firebaseUid)
@@ -233,6 +242,45 @@ fun CarWashDetailScreen(
                         }
                     }
                 }
+
+                Text(
+                    text = "Weather Forecast for ${wash.city}",
+                    color = Color(0xFF6A1B9A),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp)
+                        .background(Color(0xFFF5F5F5), RoundedCornerShape(12.dp))
+                        .padding(8.dp)
+                ) {
+                    items(weatherViewModel.weatherList) { weather ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp, horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = weather.dateTime,
+                                fontSize = 14.sp,
+                                color = Color.DarkGray
+                            )
+                            Text(
+                                text = "${weather.mainData.temperature} °C",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF6A1B9A)
+                            )
+                        }
+                    }
+                }
+
 
                 Spacer(modifier = Modifier.weight(1f))
 
