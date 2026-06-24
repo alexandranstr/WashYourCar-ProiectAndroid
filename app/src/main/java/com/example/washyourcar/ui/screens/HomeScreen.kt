@@ -27,6 +27,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.Date
 import androidx.compose.foundation.background
+import com.example.washyourcar.ui.viewmodel.WeatherViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -463,6 +464,19 @@ fun CarWashCard(carWash: CarWash, onClick: () -> Unit) {
                 )
             }
         }
+    }
+}
+
+@Composable
+fun ClientHomeScreen(
+    clientViewModel: ClientHomeViewModel = viewModel(),
+    weatherViewModel: WeatherViewModel = viewModel()
+){
+    LaunchedEffect(Unit){
+        weatherViewModel.fetchWeather("Brasov", "09981e4b7d1730200bcc5f422d1f6f85")
+    }
+    Column{
+        WeatherScreen(weatherList = weatherViewModel.weatherList)
     }
 }
 
