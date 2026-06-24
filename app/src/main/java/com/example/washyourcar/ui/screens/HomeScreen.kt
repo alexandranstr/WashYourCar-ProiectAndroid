@@ -473,7 +473,7 @@ fun ClientHomeScreen(
     weatherViewModel: WeatherViewModel = viewModel()
 ){
     LaunchedEffect(Unit){
-        weatherViewModel.fetchWeather("Brasov", "09981e4b7d1730200bcc5f422d1f6f85")
+        weatherViewModel.fetchWeather("Brasov", "c500209259fab936706ebc6c480d61da")
     }
     Column{
         WeatherScreen(weatherList = weatherViewModel.weatherList)
