@@ -467,19 +467,6 @@ fun CarWashCard(carWash: CarWash, onClick: () -> Unit) {
     }
 }
 
-@Composable
-fun ClientHomeScreen(
-    clientViewModel: ClientHomeViewModel = viewModel(),
-    weatherViewModel: WeatherViewModel = viewModel()
-){
-    LaunchedEffect(Unit){
-        weatherViewModel.fetchWeather("Brasov", "c500209259fab936706ebc6c480d61da")
-    }
-    Column{
-        WeatherScreen(weatherList = weatherViewModel.weatherList)
-    }
-}
-
 private fun formatTime(time: Long): String {
     val hours = time / 100
     val minutes = time % 100
