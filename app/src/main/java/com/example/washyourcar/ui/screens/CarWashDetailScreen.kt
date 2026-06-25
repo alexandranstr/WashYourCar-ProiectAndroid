@@ -243,7 +243,7 @@ fun CarWashDetailScreen(
                     }
                 }
 
-                Text(
+                /*Text(
                     text = "Weather Forecast for ${wash.city}",
                     color = Color(0xFF6A1B9A),
                     fontSize = 16.sp,
@@ -279,7 +279,7 @@ fun CarWashDetailScreen(
                             )
                         }
                     }
-                }
+                }*/
 
 
                 Spacer(modifier = Modifier.weight(1f))

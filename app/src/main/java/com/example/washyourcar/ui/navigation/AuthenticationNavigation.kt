@@ -108,7 +108,7 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                         return CarWashDetailViewModel(
                             carWashDao = database.carWashDao(),
                             appointmentDao = database.appointmentDao(),
-                            carDao = database.carDao() // <-- REPARAT: Am adăugat și carDao aici
+                            carDao = database.carDao() 
                         ) as T
                     }
                 }
