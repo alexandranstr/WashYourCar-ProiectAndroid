@@ -108,4 +108,8 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     fun logout() {
         auth.signOut()
     }
+
+    fun clearError() {
+        _authState.value = _authState.value.copy(errorMessage = null)
+    }
 }

@@ -41,9 +41,14 @@ fun RegisterClientScreen(
     var password by remember { mutableStateOf("") }
     var carPlate by remember { mutableStateOf("") }
     var carModel by remember { mutableStateOf("") }
+    var localErrorMessage by remember { mutableStateOf<String?>(null) }
 
     val scrollState = rememberScrollState()
     val authState by viewModel.authState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.clearError()
+    }
 
     Column(
         modifier = Modifier
@@ -85,10 +90,12 @@ fun RegisterClientScreen(
             RegClearTextField(label = "License Plate", value = carPlate, onValueChange = { carPlate = it })
             RegClearTextField(label = "Car Model", value = carModel, onValueChange = { carModel = it })
 
-            if (authState.errorMessage != null) {
+            val displayError = localErrorMessage ?: authState.errorMessage
+
+            if (displayError != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = authState.errorMessage ?: "Error",
+                    text = displayError,
                     color = Color.Red,
                     fontSize = 14.sp
                 )
@@ -98,16 +105,24 @@ fun RegisterClientScreen(
 
             Button(
                 onClick = {
-                    viewModel.register(
-                        nume = familyName,
-                        prenume = givenName,
-                        email = email,
-                        telefon = phone,
-                        parola = password,
-                        numarInmatriculare = carPlate,
-                        modelMasina = carModel,
-                        onSuccess = onRegisterSuccess
-                    )
+                    if (familyName.isBlank() || givenName.isBlank() || email.isBlank() ||
+                        phone.isBlank() || password.isBlank() || carPlate.isBlank() || carModel.isBlank()) {
+
+                        localErrorMessage = "All fields are required! Please fill in everything."
+                    } else {
+                        localErrorMessage = null
+
+                        viewModel.register(
+                            nume = familyName,
+                            prenume = givenName,
+                            email = email,
+                            telefon = phone,
+                            parola = password,
+                            numarInmatriculare = carPlate,
+                            modelMasina = carModel,
+                            onSuccess = onRegisterSuccess
+                        )
+                    }
                 },
                 enabled = !authState.isLoading,
                 modifier = Modifier

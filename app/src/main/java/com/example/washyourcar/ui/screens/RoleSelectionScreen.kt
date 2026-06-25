@@ -83,7 +83,7 @@ fun RoleSelectionScreen(onClientSelected: () -> Unit,
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(bottom = 24.dp)
+            modifier = Modifier.padding(bottom = 80.dp)
         ) {
             Text("Create your account as:", color = Color.Gray, fontSize = 14.sp)
             Row(modifier = Modifier.padding(top = 8.dp)) {

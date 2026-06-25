@@ -34,8 +34,13 @@ fun LogInClientScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var localErrorMessage by remember { mutableStateOf<String?>(null) }
 
     val authState by viewModel.authState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.clearError()
+    }
 
     Column(
         modifier = Modifier
@@ -98,10 +103,12 @@ fun LogInClientScreen(
             )
         }
 
-        if (authState.errorMessage != null) {
+        val displayError = localErrorMessage ?: authState.errorMessage
+
+        if (displayError != null) {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = authState.errorMessage ?: "Unknown error",
+                text = displayError,
                 color = Color.Red,
                 fontSize = 14.sp,
                 modifier = Modifier.padding(horizontal = 50.dp)
@@ -112,7 +119,12 @@ fun LogInClientScreen(
 
         Button(
             onClick = {
-                viewModel.login(email, password, onLoginSuccess)
+                if (email.isBlank() || password.isBlank()) {
+                    localErrorMessage = "Please enter both email and password."
+                } else {
+                    localErrorMessage = null
+                    viewModel.login(email, password, onLoginSuccess)
+                }
             },
             enabled = !authState.isLoading,
             modifier = Modifier

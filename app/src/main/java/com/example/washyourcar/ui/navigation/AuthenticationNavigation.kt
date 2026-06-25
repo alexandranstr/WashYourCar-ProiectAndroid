@@ -108,7 +108,7 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                         return CarWashDetailViewModel(
                             carWashDao = database.carWashDao(),
                             appointmentDao = database.appointmentDao(),
-                            carDao = database.carDao() 
+                            carDao = database.carDao()
                         ) as T
                     }
                 }

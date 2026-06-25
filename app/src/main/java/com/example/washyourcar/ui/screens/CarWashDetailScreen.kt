@@ -162,7 +162,7 @@ fun CarWashDetailScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "↩Last time you scheduled at: ",
+                                text = "Last time you scheduled at: ",
                                 fontSize = 12.sp,
                                 color = Color.Black
                             )
@@ -396,7 +396,7 @@ fun CarWashDetailScreen(
                     Text("Available time slots", fontWeight = FontWeight.Bold, color = Color(0xFF6A1B9A))
 
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(4),
+                        columns = GridCells.Fixed(3),
                         modifier = Modifier.height(100.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
