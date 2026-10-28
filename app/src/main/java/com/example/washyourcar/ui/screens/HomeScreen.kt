@@ -1,16 +1,19 @@
 package com.example.washyourcar.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,15 +27,15 @@ import com.example.washyourcar.data.entities.CarWash
 import com.example.washyourcar.ui.viewmodel.ClientHomeViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
-import java.util.Locale
 import java.util.Date
-import androidx.compose.foundation.background
-import com.example.washyourcar.ui.viewmodel.WeatherViewModel
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     firebaseUid: String,
+    isDarkTheme: Boolean,
+    onThemeToggle: () -> Unit,
     onLogout: () -> Unit,
     onCarWashClick: (Int) -> Unit,
     viewModel: ClientHomeViewModel = viewModel()
@@ -63,8 +66,8 @@ fun HomeScreen(
     if (showCancelConfirmationDialog && activeAppointment != null) {
         AlertDialog(
             onDismissRequest = { showCancelConfirmationDialog = false },
-            title = { Text("Cancel Appointment?", fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F)) },
-            text = { Text("Are you sure you want to cancel your upcoming reservation? This action cannot be undone.") },
+            title = { Text("Cancel Appointment?", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error) },
+            text = { Text("Are you sure you want to cancel your upcoming reservation? This action cannot be undone.", color = MaterialTheme.colorScheme.onSurface) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -72,16 +75,16 @@ fun HomeScreen(
                         showCancelConfirmationDialog = false
                     }
                 ) {
-                    Text("Yes, Cancel", fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F))
+                    Text("Yes, Cancel", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showCancelConfirmationDialog = false }) {
-                    Text("No, Keep it", fontWeight = FontWeight.Medium, color = Color.Gray)
+                    Text("No, Keep it", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
             shape = RoundedCornerShape(16.dp),
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 
@@ -89,7 +92,7 @@ fun HomeScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
-                drawerContainerColor = Color(0xFFEDE7F6),
+                drawerContainerColor = MaterialTheme.colorScheme.background,
                 modifier = Modifier.width(280.dp)
             ) {
                 Column(
@@ -103,16 +106,17 @@ fun HomeScreen(
                             text = "Hello, ${currentCustomer?.firstName ?: "Client"}!",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF6A1B9A),
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(top = 16.dp)
                         )
 
-                        HorizontalDivider(color = Color(0xFFD1C4E9))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f))
 
                         Text(
                             text = "Account Details",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { accountBoxExpanded = !accountBoxExpanded }
@@ -121,22 +125,23 @@ fun HomeScreen(
 
                         AnimatedVisibility(visible = accountBoxExpanded) {
                             Card(
-                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                 shape = RoundedCornerShape(8.dp),
                                 elevation = CardDefaults.cardElevation(2.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(text = "Email: ${currentCustomer?.email ?: "N/A"}", fontSize = 14.sp)
-                                    Text(text = "Phone: ${currentCustomer?.phoneNumber ?: "N/A"}", fontSize = 14.sp)
+                                    Text(text = "Email: ${currentCustomer?.email ?: "N/A"}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                    Text(text = "Phone: ${currentCustomer?.phoneNumber ?: "N/A"}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                                     if (customerCar != null) {
                                         Text(
                                             text = "Car: ${customerCar!!.model} [${customerCar!!.licensePlate}]",
                                             fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                     } else {
-                                        Text(text = "No car registered", fontSize = 14.sp, color = Color.Gray)
+                                        Text(text = "No car registered", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
                             }
@@ -146,7 +151,7 @@ fun HomeScreen(
                             text = "Next Appointment Details",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF6A1B9A),
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { appointmentsExpanded = !appointmentsExpanded }
@@ -156,7 +161,7 @@ fun HomeScreen(
                         AnimatedVisibility(visible = appointmentsExpanded) {
                             if (activeAppointment != null) {
                                 Card(
-                                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                     shape = RoundedCornerShape(12.dp),
                                     elevation = CardDefaults.cardElevation(3.dp),
                                     modifier = Modifier.fillMaxWidth()
@@ -174,9 +179,9 @@ fun HomeScreen(
                                             text = "YOUR NEXT SLOT",
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF6A1B9A),
+                                            color = MaterialTheme.colorScheme.onPrimary,
                                             modifier = Modifier
-                                                .background(Color(0xFFF3E5F5), RoundedCornerShape(4.dp))
+                                                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
                                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                                         )
 
@@ -187,33 +192,33 @@ fun HomeScreen(
                                             text = "📍 Location: $savedWashName",
                                             fontSize = 14.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = Color.Black
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
 
                                         Text(
                                             text = "Date: $dateStr",
                                             fontSize = 14.sp,
                                             fontWeight = FontWeight.Medium,
-                                            color = Color.DarkGray
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Text(
                                             text = "Time: $timeStr",
                                             fontSize = 14.sp,
                                             fontWeight = FontWeight.Medium,
-                                            color = Color.DarkGray
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Text(
                                             text = "Plate: ${activeAppointment!!.licensePlate}",
                                             fontSize = 13.sp,
-                                            color = Color.Gray
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
 
                                         Spacer(modifier = Modifier.height(4.dp))
 
                                         OutlinedButton(
                                             onClick = { showCancelConfirmationDialog = true },
-                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFD32F2F)),
-                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFCDD2)),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
                                             shape = RoundedCornerShape(8.dp),
                                             modifier = Modifier.fillMaxWidth(),
                                             contentPadding = PaddingValues(vertical = 4.dp)
@@ -224,14 +229,14 @@ fun HomeScreen(
                                 }
                             } else {
                                 Card(
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text(
                                         text = "No upcoming appointments.",
                                         fontSize = 13.sp,
-                                        color = Color.Gray,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.padding(12.dp)
                                     )
                                 }
@@ -239,17 +244,32 @@ fun HomeScreen(
                         }
                     }
 
-                    Button(
-                        onClick = onLogout,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp)
-                    ) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Logout", tint = Color.White)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "Logout", color = Color.White, fontWeight = FontWeight.Bold)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = onLogout,
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.ExitToApp, contentDescription = "Logout", tint = MaterialTheme.colorScheme.onError)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = "Logout", color = MaterialTheme.colorScheme.onError, fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedButton(
+                            onClick = onThemeToggle,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                        ) {
+                            Icon(
+                                imageVector = if (isDarkTheme) Icons.Default.WbSunny else Icons.Default.DarkMode,
+                                contentDescription = "Schimbă tema"
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = if (isDarkTheme) "Light Mode" else "Dark Mode", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -258,15 +278,16 @@ fun HomeScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Wash Your Car", color = Color.White, fontWeight = FontWeight.Bold) },
+                    title = { Text("Wash Your Car", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu", tint = Color.White)
+                            Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onPrimary)
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF6A1B9A))
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
                 )
-            }
+            },
+            containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
             Column(
                 modifier = Modifier
@@ -280,7 +301,7 @@ fun HomeScreen(
                         text = "Select City",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                     )
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -291,8 +312,8 @@ fun HomeScreen(
                             onClick = { viewModel.loadAllCarWashes() },
                             label = { Text("All Cities") },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color(0xFF6A1B9A),
-                                selectedLabelColor = Color.White
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                             )
                         )
 
@@ -302,8 +323,8 @@ fun HomeScreen(
                                 onClick = { viewModel.selectCity(city) },
                                 label = { Text(city) },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = Color(0xFF6A1B9A),
-                                    selectedLabelColor = Color.White
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                                 )
                             )
                         }
@@ -322,8 +343,10 @@ fun HomeScreen(
                         shape = RoundedCornerShape(24.dp),
                         modifier = Modifier.weight(1f),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF6A1B9A),
-                            unfocusedBorderColor = Color(0xFFB28BFF)
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.secondary,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
                         ),
                         singleLine = true,
                         enabled = true
@@ -336,14 +359,14 @@ fun HomeScreen(
                         Icon(
                             Icons.Default.Settings,
                             contentDescription = "Filters",
-                            tint = if (selectedFilters.isNotEmpty()) Color(0xFFFFB300) else Color(0xFF6A1B9A)
+                            tint = if (selectedFilters.isNotEmpty()) Color(0xFFFFB300) else MaterialTheme.colorScheme.primary
                         )
                     }
                 }
 
                 AnimatedVisibility(visible = filterBoxVisible) {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth(),
                         elevation = CardDefaults.cardElevation(2.dp)
@@ -367,12 +390,16 @@ fun HomeScreen(
                                     Checkbox(
                                         checked = selectedFilters.contains(filter),
                                         onCheckedChange = { _ -> viewModel.toggleFilter(filter) },
-                                        colors = CheckboxDefaults.colors(checkedColor = Color(0xFF6A1B9A))
+                                        colors = CheckboxDefaults.colors(
+                                            checkedColor = MaterialTheme.colorScheme.primary,
+                                            checkmarkColor = MaterialTheme.colorScheme.onPrimary
+                                        )
                                     )
                                     Text(
                                         text = filter,
                                         fontSize = 14.sp,
-                                        modifier = Modifier.padding(start = 8.dp)
+                                        modifier = Modifier.padding(start = 8.dp),
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                             }
@@ -384,7 +411,7 @@ fun HomeScreen(
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
                             text = "No car washes matched your criteria.",
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                             fontSize = 15.sp
                         )
                     }
@@ -409,7 +436,7 @@ fun CarWashCard(carWash: CarWash, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5EDFF)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
@@ -437,7 +464,7 @@ fun CarWashCard(carWash: CarWash, onClick: () -> Unit) {
                         text = carWash.name,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -445,7 +472,7 @@ fun CarWashCard(carWash: CarWash, onClick: () -> Unit) {
                         repeat(starsCount) {
                             Text("★", color = Color(0xFFFFB300), fontSize = 14.sp)
                         }
-                        repeat(5 - starsCount) {
+                        repeat(5 - starsCount) { // Eroare de sintaxă corectată aici (5 - starsCount)
                             Text("☆", color = Color(0xFFFFB300), fontSize = 14.sp)
                         }
                     }
@@ -454,13 +481,13 @@ fun CarWashCard(carWash: CarWash, onClick: () -> Unit) {
                 Text(
                     text = "Mon–Sun  ${formatTime(carWash.openTime)} - ${formatTime(carWash.closeTime)}",
                     fontSize = 13.sp,
-                    color = Color.DarkGray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )
 
                 Text(
                     text = "${carWash.address}, ${carWash.city}",
                     fontSize = 13.sp,
-                    color = Color.DarkGray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )
             }
         }

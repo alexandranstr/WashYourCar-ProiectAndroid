@@ -1,4 +1,5 @@
 package com.example.washyourcar.ui.screens
+
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -8,8 +9,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,12 +22,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.washyourcar.viewmodel.AuthViewModel
@@ -31,6 +35,8 @@ import com.example.washyourcar.viewmodel.AuthViewModel
 @Composable
 fun RegisterClientScreen(
     viewModel: AuthViewModel,
+    isDarkTheme: Boolean,           // Adăugat parametrul temei
+    onThemeToggle: () -> Unit,      // Adăugat funcția de toggle a temei
     onRegisterSuccess: () -> Unit,
     onBackClick: () -> Unit
 ) {
@@ -53,27 +59,84 @@ fun RegisterClientScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(scrollState),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Header-ul simetric
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(130.dp)
-                .background(Color(0xFF6A1B9A)),
-            contentAlignment = Alignment.Center
+                .height(120.dp) // Setat la 120dp pentru consistență
+                .background(MaterialTheme.colorScheme.primary)
         ) {
             RegGlowingOrb()
-            Text(text = "Wash your car!", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+
+            // Titlul centrat
+            Text(
+                text = "Wash Your Car!",
+                style = TextStyle(
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontSize = 35.sp, // Setat la 35sp
+                    fontWeight = FontWeight.Bold,
+                    shadow = Shadow(
+                        color = Color.Black.copy(alpha = 0.5f),
+                        offset = Offset(2f, 2f),
+                        blurRadius = 4f
+                    )
+                ),
+                modifier = Modifier.align(Alignment.Center)
+            )
+
+            // Butonul de BACK (Stânga)
+            androidx.compose.material3.IconButton(
+                onClick = onBackClick,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Înapoi",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            // Butonul de TEMĂ (Dreapta)
+            androidx.compose.material3.IconButton(
+                onClick = onThemeToggle,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 16.dp)
+            ) {
+                Icon(
+                    imageVector = if (isDarkTheme) Icons.Default.WbSunny else Icons.Default.DarkMode,
+                    contentDescription = "Schimbă tema",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
         }
 
+        Spacer(
+            modifier = Modifier
+                .height(2.dp)
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f))
+        )
         Spacer(modifier = Modifier.height(24.dp))
-        Text(text = "Create your account", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF6A1B9A))
+
+        Text(
+            text = "Create your account",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.primary
+        )
         Spacer(modifier = Modifier.height(20.dp))
 
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -84,8 +147,8 @@ fun RegisterClientScreen(
             RegClearTextField(label = "Password", value = password, onValueChange = { password = it }, isPasswordInput = true)
 
             Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(thickness = 1.dp, color = Color(0xFFF0E6FF))
-            Text(text = "Car Information", fontSize = 14.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+            HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
+            Text(text = "Car Information", fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
 
             RegClearTextField(label = "License Plate", value = carPlate, onValueChange = { carPlate = it })
             RegClearTextField(label = "Car Model", value = carModel, onValueChange = { carModel = it })
@@ -107,11 +170,9 @@ fun RegisterClientScreen(
                 onClick = {
                     if (familyName.isBlank() || givenName.isBlank() || email.isBlank() ||
                         phone.isBlank() || password.isBlank() || carPlate.isBlank() || carModel.isBlank()) {
-
                         localErrorMessage = "All fields are required! Please fill in everything."
                     } else {
                         localErrorMessage = null
-
                         viewModel.register(
                             nume = familyName,
                             prenume = givenName,
@@ -135,20 +196,27 @@ fun RegisterClientScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Brush.verticalGradient(listOf(Color(0xFFB28BFF), Color(0xFF5A0F84)))),
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    MaterialTheme.colorScheme.secondary,
+                                    MaterialTheme.colorScheme.primary
+                                )
+                            )
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     if (authState.isLoading) {
-                        Text("CREATING...", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("CREATING...", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     } else {
-                        Text("CREATE", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("CREATE", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
 
             Text(
                 text = "Already have an account? Sign In",
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 fontSize = 13.sp,
                 modifier = Modifier
                     .clickable { onBackClick() }
@@ -173,7 +241,7 @@ fun RegClearTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = Modifier.fillMaxWidth().height(55.dp),
-        placeholder = { Text(text = label, color = Color.LightGray, fontSize = 11.sp) },
+        placeholder = { Text(text = label, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f), fontSize = 11.sp) },
         shape = RoundedCornerShape(12.dp),
         singleLine = true,
         visualTransformation = if (isPasswordInput && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
@@ -181,16 +249,18 @@ fun RegClearTextField(
             if (isPasswordInput) {
                 val image = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(imageVector = image, contentDescription = null, tint = Color(0xFF6A1B9A))
+                    Icon(imageVector = image, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 }
             }
         },
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Color(0xFF6A1B9A),
-            unfocusedBorderColor = Color(0xFFB28BFF),
-            focusedContainerColor = Color(0xFFF8F4FF),
-            unfocusedContainerColor = Color.White
-        )
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.secondary,
+            focusedContainerColor = MaterialTheme.colorScheme.background,
+            unfocusedContainerColor = MaterialTheme.colorScheme.background,
+            cursorColor = MaterialTheme.colorScheme.primary
+        ),
+        textStyle = TextStyle(fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground)
     )
 }
 
@@ -202,11 +272,15 @@ fun RegGlowingOrb() {
         animationSpec = infiniteRepeatable(animation = tween(8000, easing = LinearEasing), repeatMode = RepeatMode.Reverse),
         label = "progress"
     )
+
+    val color1 = MaterialTheme.colorScheme.secondary
+    val color2 = MaterialTheme.colorScheme.tertiary
+
     Canvas(modifier = Modifier.fillMaxSize()) {
         val w = size.width
         val h = size.height
-        drawRegGlowingOrb(Offset(w * 0.2f + (animProgress * 80), h * 0.3f), 140f, Color(0xFF00CED1))
-        drawRegGlowingOrb(Offset(w * 0.8f - (animProgress * 100), h * 0.6f), 180f, Color(0xFFB28BFF))
+        drawRegGlowingOrb(Offset(w * 0.2f + (animProgress * 80), h * 0.3f), 140f, color1)
+        drawRegGlowingOrb(Offset(w * 0.8f - (animProgress * 100), h * 0.6f), 180f, color2) // Corectat: adăugat "-"
         drawRegGlowingOrb(Offset(w * 0.5f, h * 0.2f + (animProgress * 60)), 110f, Color.White)
     }
 }

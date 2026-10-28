@@ -2,31 +2,68 @@ package com.example.washyourcar.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.washyourcar.ui.viewmodel.CarWashDetailViewModel
-import java.text.SimpleDateFormat
-import java.util.*
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.washyourcar.ui.viewmodel.CarWashDetailViewModel
 import com.example.washyourcar.ui.viewmodel.WeatherViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,6 +91,7 @@ fun CarWashDetailScreen(
     var selectedServiceId by remember { mutableStateOf<Int?>(null) }
     var selectedServiceDuration by remember { mutableStateOf(0) }
     var selectedSlotStartTime by remember { mutableStateOf<Long?>(null) }
+
     val context = androidx.compose.ui.platform.LocalContext.current
     val sharedPrefs = remember { context.getSharedPreferences("WashYourCarPrefs", android.content.Context.MODE_PRIVATE) }
     val lastBookedWash = remember { sharedPrefs.getString("last_booked_wash_name", null) }
@@ -61,7 +99,7 @@ fun CarWashDetailScreen(
     val datePickerState = rememberDatePickerState(
         selectableDates = object : SelectableDates {
             override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                return utcTimeMillis >= System.currentTimeMillis() - 24 * 60 * 60 * 1000
+                return utcTimeMillis >= System.currentTimeMillis() - 24L * 60L * 60L * 1000L
             }
         }
     )
@@ -88,8 +126,8 @@ fun CarWashDetailScreen(
                 showSuccessDialog = false
                 onBack()
             },
-            title = { Text("Appointment Confirmed!", fontWeight = FontWeight.Bold, color = Color(0xFF6A1B9A)) },
-            text = { Text("Your car wash slot has been successfully reserved. You can review or cancel it in your appointments section.") },
+            title = { Text("Appointment Confirmed!", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
+            text = { Text("Your car wash slot has been successfully reserved. You can review or cancel it in your appointments section.", color = MaterialTheme.colorScheme.onSurface) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -97,26 +135,27 @@ fun CarWashDetailScreen(
                         onBack()
                     }
                 ) {
-                    Text("OK", fontWeight = FontWeight.Bold, color = Color(0xFF6A1B9A))
+                    Text("OK", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
             },
             shape = RoundedCornerShape(16.dp),
-            containerColor = Color.White
+            containerColor = MaterialTheme.colorScheme.surface
         )
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(carWash?.name ?: "Details", color = Color.White, fontWeight = FontWeight.Bold) },
+                title = { Text(carWash?.name ?: "Details", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onPrimary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF6A1B9A))
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         carWash?.let { wash ->
             Column(
@@ -128,23 +167,23 @@ fun CarWashDetailScreen(
             ) {
                 randomTip?.let { tip ->
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF9C4)),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth(),
                         elevation = CardDefaults.cardElevation(2.dp)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(
-                                text = "${tip.title}",
+                                text = tip.title,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFFF57F17)
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = tip.message,
                                 fontSize = 13.sp,
-                                color = Color.Black
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
@@ -152,7 +191,7 @@ fun CarWashDetailScreen(
 
                 lastBookedWash?.let { washName ->
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)), // Verde deschis plăcut
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth(),
                         elevation = CardDefaults.cardElevation(1.dp)
@@ -164,13 +203,13 @@ fun CarWashDetailScreen(
                             Text(
                                 text = "Last time you scheduled at: ",
                                 fontSize = 12.sp,
-                                color = Color.Black
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = washName,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF2E7D32)
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
                     }
@@ -185,7 +224,10 @@ fun CarWashDetailScreen(
                         modifier = Modifier
                             .background(
                                 Brush.verticalGradient(
-                                    colors = listOf(Color(0xFF5E1680), Color(0xFF7B1FA2), Color(0xFF8E24AA))
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.secondary
+                                    )
                                 )
                             )
                             .padding(20.dp),
@@ -194,22 +236,23 @@ fun CarWashDetailScreen(
                     ) {
                         Text(
                             text = "Open daily: ${wash.openTime / 100}:00 - ${wash.closeTime / 100}:00",
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "${wash.address}, ${wash.city}",
-                            color = Color(0xFFEDE7F6),
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
                             fontSize = 14.sp
                         )
 
-                        HorizontalDivider(color = Color(0xFFD1C4E9), modifier = Modifier.padding(vertical = 4.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.3f), modifier = Modifier.padding(vertical = 4.dp))
 
-                        Text(text = "Premium Services Available: ", color = Color.White, fontSize = 13.sp)
+                        Text(text = "Premium Services Available: ", color = MaterialTheme.colorScheme.onPrimary, fontSize = 13.sp)
                         Spacer(modifier = Modifier.height(4.dp))
+
                         if (carWashServiceNames.isEmpty()) {
-                            Text(text = "No custom services listed.", color = Color(0xFFE1D5F5), fontSize = 12.sp)
+                            Text(text = "No custom services listed.", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f), fontSize = 12.sp)
                         } else {
                             Column(
                                 modifier = Modifier.fillMaxWidth(),
@@ -223,13 +266,13 @@ fun CarWashDetailScreen(
                                     ) {
                                         rowServices.forEach { serviceName ->
                                             Surface(
-                                                color = Color.White.copy(alpha = 0.15f),
+                                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.15f),
                                                 shape = RoundedCornerShape(12.dp),
                                                 modifier = Modifier.padding(horizontal = 2.dp)
                                             ) {
                                                 Text(
                                                     text = serviceName,
-                                                    color = Color.White,
+                                                    color = MaterialTheme.colorScheme.onPrimary,
                                                     fontSize = 12.sp,
                                                     fontWeight = FontWeight.Medium,
                                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
@@ -243,56 +286,17 @@ fun CarWashDetailScreen(
                     }
                 }
 
-                /*Text(
-                    text = "Weather Forecast for ${wash.city}",
-                    color = Color(0xFF6A1B9A),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(150.dp)
-                        .background(Color(0xFFF5F5F5), RoundedCornerShape(12.dp))
-                        .padding(8.dp)
-                ) {
-                    items(weatherViewModel.weatherList) { weather ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp, horizontal = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = weather.dt_txt,
-                                fontSize = 14.sp,
-                                color = Color.DarkGray
-                            )
-                            Text(
-                                text = "${weather.main.temp} °C",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF6A1B9A)
-                            )
-                        }
-                    }
-                }*/
-
-
                 Spacer(modifier = Modifier.weight(1f))
 
                 Button(
                     onClick = { showBottomSheet = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6A1B9A)),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(22.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp)
                 ) {
-                    Text("Schedule appointment", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("Schedule appointment", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -301,7 +305,7 @@ fun CarWashDetailScreen(
     if (showBottomSheet) {
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
-            containerColor = Color.White,
+            containerColor = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
         ) {
             Column(
@@ -311,14 +315,35 @@ fun CarWashDetailScreen(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Text("Schedule appointment", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF6A1B9A))
+                Text("Schedule appointment", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
 
-                Text("Select date", fontWeight = FontWeight.Bold, color = Color(0xFF6A1B9A))
-                DatePicker(state = datePickerState, title = null, headline = null, showModeToggle = false)
+                Text("Select date", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                DatePicker(
+                    state = datePickerState,
+                    title = null,
+                    headline = null,
+                    showModeToggle = false,
+                    colors = DatePickerDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        headlineContentColor = MaterialTheme.colorScheme.onSurface,
+                        weekdayContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        subheadContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        yearContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        currentYearContentColor = MaterialTheme.colorScheme.primary,
+                        selectedYearContentColor = MaterialTheme.colorScheme.onPrimary,
+                        selectedYearContainerColor = MaterialTheme.colorScheme.primary,
+                        dayContentColor = MaterialTheme.colorScheme.onSurface,
+                        selectedDayContentColor = MaterialTheme.colorScheme.onPrimary,
+                        selectedDayContainerColor = MaterialTheme.colorScheme.primary,
+                        todayContentColor = MaterialTheme.colorScheme.primary,
+                        todayDateBorderColor = MaterialTheme.colorScheme.primary
+                    )
+                )
 
                 selectedDateMillis = datePickerState.selectedDateMillis
 
-                Text("Select service", fontWeight = FontWeight.Bold, color = Color(0xFF6A1B9A))
+                Text("Select service", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
 
                 val masterServices = listOf(
                     Triple(1, "Exterior Wash", 15),
@@ -332,7 +357,7 @@ fun CarWashDetailScreen(
                 }
 
                 if (availableLocalServices.isEmpty()) {
-                    Text("No services available for this car wash.", color = Color.Gray, fontSize = 14.sp)
+                    Text("No services available for this car wash.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                 } else {
                     availableLocalServices.forEach { (id, name, duration) ->
                         Row(
@@ -350,28 +375,34 @@ fun CarWashDetailScreen(
                                     selectedServiceId = id
                                     selectedServiceDuration = duration
                                 },
-                                colors = RadioButtonDefaults.colors(selectedColor = Color(0xFF6A1B9A))
+                                colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
                             )
-                            Text("$name ($duration min)", fontSize = 14.sp)
+                            Text("$name ($duration min)", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }
 
-                Text("Total duration: $selectedServiceDuration minutes", color = Color(0xFF4A148C), fontWeight = FontWeight.Bold)
+                Text("Total duration: $selectedServiceDuration minutes", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
 
-                Text("Select time range", fontWeight = FontWeight.Bold, color = Color(0xFF6A1B9A))
+                Text("Select time range", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 var dropdownExpanded by remember { mutableStateOf(false) }
 
                 Box {
-                    Button(onClick = { dropdownExpanded = true }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEDE7F6))) {
-                        Text(selectedTimeRange, color = Color(0xFF6A1B9A))
+                    Button(
+                        onClick = { dropdownExpanded = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    ) {
+                        Text(selectedTimeRange, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }
                     DropdownMenu(expanded = dropdownExpanded, onDismissRequest = { dropdownExpanded = false }) {
                         listOf("Morning", "Afternoon", "Evening").forEach { range ->
-                            DropdownMenuItem(text = { Text(range) }, onClick = {
-                                selectedTimeRange = range
-                                dropdownExpanded = false
-                            })
+                            DropdownMenuItem(
+                                text = { Text(range, color = MaterialTheme.colorScheme.onSurface) },
+                                onClick = {
+                                    selectedTimeRange = range
+                                    dropdownExpanded = false
+                                }
+                            )
                         }
                     }
                 }
@@ -382,18 +413,18 @@ fun CarWashDetailScreen(
                             viewModel.generateSlots(carWashId, it, selectedServiceDuration, selectedTimeRange)
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFAB47BC)),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                     shape = RoundedCornerShape(18.dp)
                 ) {
-                    Text("Check availability", color = Color.White)
+                    Text("Check availability", color = MaterialTheme.colorScheme.onSecondary)
                 }
 
                 errorMessage?.let {
-                    Text(it, color = Color.Red, fontSize = 12.sp)
+                    Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
                 }
 
                 if (availableSlots.isNotEmpty()) {
-                    Text("Available time slots", fontWeight = FontWeight.Bold, color = Color(0xFF6A1B9A))
+                    Text("Available time slots", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
 
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(3),
@@ -408,10 +439,10 @@ fun CarWashDetailScreen(
                             Button(
                                 onClick = { selectedSlotStartTime = timeMs },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (isSelected) Color(0xFF6A1B9A) else Color(0xFFE1D5F5)
+                                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
                                 )
                             ) {
-                                Text(timeString, color = if (isSelected) Color.White else Color.Black, fontSize = 11.sp)
+                                Text(timeString, color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             }
                         }
                     }
@@ -433,11 +464,11 @@ fun CarWashDetailScreen(
                         }
                     },
                     enabled = selectedSlotStartTime != null,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6A1B9A)),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(22.dp)
                 ) {
-                    Text("Confirm appointment", color = Color.White)
+                    Text("Confirm appointment", color = MaterialTheme.colorScheme.onPrimary)
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))

@@ -6,6 +6,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -21,16 +28,16 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import com.example.washyourcar.viewmodel.AuthViewModel
 
 @Composable
 fun LogInClientScreen(
     viewModel: AuthViewModel,
+    isDarkTheme: Boolean,
+    onThemeToggle: () -> Unit,
     onLoginSuccess: () -> Unit,
-    onNavigateToRegister: () -> Unit
+    onNavigateToRegister: () -> Unit,
+    onBackClick: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -45,30 +52,66 @@ fun LogInClientScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(MaterialTheme.colorScheme.background),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(130.dp)
-                .background(Color(0xFF6A1B9A)),
-            contentAlignment = Alignment.Center
+                .height(120.dp)
+                .background(MaterialTheme.colorScheme.primary)
         ) {
             LoginGlowingOrb()
+
             Text(
                 text = "Wash Your Car!",
                 style = TextStyle(
-                    color = Color.White,
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontSize = 35.sp,
+                    fontWeight = FontWeight.Bold,
+                    shadow = Shadow(
+                        color = Color.Black.copy(alpha = 0.5f),
+                        offset = Offset(2f, 2f),
+                        blurRadius = 4f
+                    )
+                ),
+                modifier = Modifier.align(Alignment.Center)
             )
+
+            androidx.compose.material3.IconButton(
+                onClick = onBackClick,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Înapoi",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            androidx.compose.material3.IconButton(
+                onClick = onThemeToggle,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 16.dp)
+            ) {
+                Icon(
+                    imageVector = if (isDarkTheme) Icons.Default.WbSunny else Icons.Default.DarkMode,
+                    contentDescription = "Schimbă tema",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
         }
 
-
-        Spacer(modifier = Modifier.height(2.dp).fillMaxWidth().background(Color.Black))
+        Spacer(
+            modifier = Modifier
+                .height(2.dp)
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f))
+        )
         Spacer(modifier = Modifier.height(50.dp))
 
         Text(
@@ -76,7 +119,7 @@ fun LogInClientScreen(
             style = TextStyle(
                 fontSize = 22.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color(0xFF6A1B9A)
+                color = MaterialTheme.colorScheme.primary
             )
         )
 
@@ -137,13 +180,20 @@ fun LogInClientScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Brush.verticalGradient(listOf(Color(0xFFB28BFF), Color(0xFF5A0F84)))),
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                MaterialTheme.colorScheme.secondary,
+                                MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 if (authState.isLoading) {
-                    Text("LOADING...", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("LOADING...", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 } else {
-                    Text("LOGIN", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("LOGIN", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -151,7 +201,7 @@ fun LogInClientScreen(
 
         Text(
             text = "Don't have an account? Sign up",
-            color = Color.Gray,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             fontSize = 13.sp,
             modifier = Modifier
                 .clickable { onNavigateToRegister() }
@@ -175,10 +225,9 @@ fun ClearTextField(
         modifier = Modifier
             .fillMaxWidth()
             .height(60.dp),
-        placeholder = { Text(text = label, color = Color.LightGray) },
+        placeholder = { Text(text = label, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
         shape = RoundedCornerShape(12.dp),
         singleLine = true,
-
         visualTransformation = if (isPasswordInput && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
         trailingIcon = {
             if (isPasswordInput) {
@@ -186,21 +235,20 @@ fun ClearTextField(
                 val description = if (passwordVisible) "Hide password" else "Show password"
 
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(imageVector = image, contentDescription = description, tint = Color(0xFF6A1B9A))
+                    Icon(imageVector = image, contentDescription = description, tint = MaterialTheme.colorScheme.primary)
                 }
             }
         },
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Color(0xFF6A1B9A),
-            unfocusedBorderColor = Color(0xFFB28BFF),
-            focusedContainerColor = Color(0xFFF8F4FF),
-            unfocusedContainerColor = Color.White,
-            cursorColor = Color(0xFF6A1B9A)
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.secondary,
+            focusedContainerColor = MaterialTheme.colorScheme.background,
+            unfocusedContainerColor = MaterialTheme.colorScheme.background,
+            cursorColor = MaterialTheme.colorScheme.primary
         ),
-        textStyle = TextStyle(fontSize = 16.sp, color = Color.Black)
+        textStyle = TextStyle(fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground)
     )
 }
-
 
 @Composable
 fun LoginGlowingOrb() {
@@ -215,6 +263,10 @@ fun LoginGlowingOrb() {
         ), label = "progress"
     )
 
+    val color1 = MaterialTheme.colorScheme.secondary
+    val color2 = MaterialTheme.colorScheme.tertiary
+    val color3 = MaterialTheme.colorScheme.primary
+
     Canvas(modifier = Modifier.fillMaxSize()) {
         val w = size.width
         val h = size.height
@@ -222,13 +274,13 @@ fun LoginGlowingOrb() {
         drawLoginGlowingOrb(
             centerOffset = Offset(w * 0.2f + (animProgress * 100), h * 0.3f),
             radius = 150f,
-            color = Color(0xFF00CED1)
+            color = color1
         )
 
         drawLoginGlowingOrb(
             centerOffset = Offset(w * 0.8f - (animProgress * 150), h * 0.6f),
             radius = 200f,
-            color = Color(0xFFB28BFF)
+            color = color2
         )
 
         drawLoginGlowingOrb(
@@ -240,7 +292,7 @@ fun LoginGlowingOrb() {
         drawLoginGlowingOrb(
             centerOffset = Offset(w * 0.1f, h * 0.8f),
             radius = 180f,
-            color = Color(0xFFD0A8FF)
+            color = color3
         )
     }
 }
