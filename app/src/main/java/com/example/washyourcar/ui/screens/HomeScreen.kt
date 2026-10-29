@@ -8,8 +8,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -55,6 +55,9 @@ fun HomeScreen(
     var filterBoxVisible by remember { mutableStateOf(false) }
     var accountBoxExpanded by remember { mutableStateOf(false) }
     var showCancelConfirmationDialog by remember { mutableStateOf(false) }
+
+    // Culori dinamice pentru meniul lateral
+    val menuTitleColor = if (isDarkTheme) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
 
     LaunchedEffect(firebaseUid) {
         if (firebaseUid.isNotEmpty()) {
@@ -106,17 +109,17 @@ fun HomeScreen(
                             text = "Hello, ${currentCustomer?.firstName ?: "Client"}!",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = menuTitleColor,
                             modifier = Modifier.padding(top = 16.dp)
                         )
 
-                        HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f))
+                        HorizontalDivider(color = menuTitleColor.copy(alpha = 0.2f))
 
                         Text(
                             text = "Account Details",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onBackground,
+                            color = menuTitleColor,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { accountBoxExpanded = !accountBoxExpanded }
@@ -131,8 +134,16 @@ fun HomeScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(text = "Email: ${currentCustomer?.email ?: "N/A"}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
-                                    Text(text = "Phone: ${currentCustomer?.phoneNumber ?: "N/A"}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                    Text(
+                                        text = "Email: ${currentCustomer?.email ?: "N/A"}",
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "Phone: ${currentCustomer?.phoneNumber ?: "N/A"}",
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
                                     if (customerCar != null) {
                                         Text(
                                             text = "Car: ${customerCar!!.model} [${customerCar!!.licensePlate}]",
@@ -141,7 +152,11 @@ fun HomeScreen(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                     } else {
-                                        Text(text = "No car registered", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(
+                                            text = "No car registered",
+                                            fontSize = 14.sp,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                        )
                                     }
                                 }
                             }
@@ -151,7 +166,7 @@ fun HomeScreen(
                             text = "Next Appointment Details",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = menuTitleColor,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { appointmentsExpanded = !appointmentsExpanded }
@@ -236,7 +251,7 @@ fun HomeScreen(
                                     Text(
                                         text = "No upcoming appointments.",
                                         fontSize = 13.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.padding(12.dp)
                                     )
                                 }
@@ -251,7 +266,7 @@ fun HomeScreen(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Default.ExitToApp, contentDescription = "Logout", tint = MaterialTheme.colorScheme.onError)
+                            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = MaterialTheme.colorScheme.onError)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(text = "Logout", color = MaterialTheme.colorScheme.onError, fontWeight = FontWeight.Bold)
                         }
@@ -260,8 +275,8 @@ fun HomeScreen(
                             onClick = onThemeToggle,
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth(),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                            border = androidx.compose.foundation.BorderStroke(1.dp, menuTitleColor),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = menuTitleColor)
                         ) {
                             Icon(
                                 imageVector = if (isDarkTheme) Icons.Default.WbSunny else Icons.Default.DarkMode,
@@ -472,7 +487,7 @@ fun CarWashCard(carWash: CarWash, onClick: () -> Unit) {
                         repeat(starsCount) {
                             Text("★", color = Color(0xFFFFB300), fontSize = 14.sp)
                         }
-                        repeat(5 - starsCount) { // Eroare de sintaxă corectată aici (5 - starsCount)
+                        repeat(5 - starsCount) {
                             Text("☆", color = Color(0xFFFFB300), fontSize = 14.sp)
                         }
                     }
@@ -497,5 +512,5 @@ fun CarWashCard(carWash: CarWash, onClick: () -> Unit) {
 private fun formatTime(time: Long): String {
     val hours = time / 100
     val minutes = time % 100
-    return String.format("%02d:%02d", hours, minutes)
+    return String.format(Locale.getDefault(), "%02d:%02d", hours, minutes)
 }

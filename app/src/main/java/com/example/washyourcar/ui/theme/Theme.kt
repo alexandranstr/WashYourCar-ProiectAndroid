@@ -9,19 +9,29 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = AquaBubble80,
-    secondary = BubbleLight90,
-    tertiary = FoamMint90
+    primary = DarkWaterPrimary,
+    secondary = DarkWaterSecondary,
+    tertiary = DarkWaterTertiary,
+    background = DarkWaterBackground,
+    surface = DarkWaterSurface,
+    onPrimary = Color.White,
+    onBackground = DarkWaterText,
+    onSurface = DarkWaterText
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = BubbleBlue80,
-    secondary = WaterTeal80,
-    tertiary = OceanGray70
-
+    primary = WaterPrimary,
+    secondary = WaterSecondary,
+    tertiary = WaterTertiary,
+    background = WaterBackground,
+    surface = Color.White,
+    onPrimary = Color.White,
+    onBackground = WaterText,
+    onSurface = WaterText
 )
 
 @Composable

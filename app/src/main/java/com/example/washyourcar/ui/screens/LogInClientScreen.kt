@@ -76,7 +76,9 @@ fun LogInClientScreen(
                         blurRadius = 4f
                     )
                 ),
-                modifier = Modifier.align(Alignment.Center)
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(y = 8.dp)
             )
 
             androidx.compose.material3.IconButton(

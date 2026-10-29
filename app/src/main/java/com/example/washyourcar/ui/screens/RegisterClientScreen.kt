@@ -85,7 +85,9 @@ fun RegisterClientScreen(
                         blurRadius = 4f
                     )
                 ),
-                modifier = Modifier.align(Alignment.Center)
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(y = 8.dp)
             )
 
             // Butonul de BACK (Stânga)

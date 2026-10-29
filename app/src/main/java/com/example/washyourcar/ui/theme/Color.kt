@@ -27,4 +27,26 @@ val BubbleLight90 = Color(0xFFD7F6FD)
 
 val BubbleBlue80 = Color(0xFFB1E6FC)
 
+val WaterPrimary = Color(0xFF0095C7)
+
+val WaterSecondary = Color(0xFF48CAE4)
+
+val WaterTertiary = Color(0xFF90E0EF)
+
+val WaterBackground = Color(0xFFF6FAFB)
+
+val WaterText = Color(0xFF1D3557)
+
+val DarkWaterBackground = Color(0xFF0B192C)
+
+val DarkWaterSurface = Color(0xFF162539)
+
+val DarkWaterPrimary = Color(0xFF004E75)
+
+val DarkWaterSecondary = Color(0xFF0095C7)
+
+val DarkWaterTertiary = Color(0xFF48CAE4)
+
+val DarkWaterText = Color(0xFFE6FAFD)
+
 
