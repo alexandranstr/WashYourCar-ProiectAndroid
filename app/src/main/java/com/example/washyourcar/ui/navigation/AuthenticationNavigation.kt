@@ -32,6 +32,10 @@ sealed class Screen(val route: String) {
     object RegisterClient : Screen("register_client")
     object Home : Screen("home")
     object CarWashDetail : Screen("car_wash_detail/{carWashId}")
+
+    object LoginOwner : Screen("login_owner")
+
+    object RegisterOwner : Screen("register_owner")
 }
 
 @Composable
@@ -73,10 +77,14 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                         navController.navigate(Screen.LoginClient.route)
                     },
                     onEmployeeSelected = { },
-                    onOwnerSelected = { },
+                    onOwnerSelected = {
+                        navController.navigate(Screen.LoginOwner.route)
+                    },
                     onRegisterClientSelected = {
                         navController.navigate(Screen.RegisterClient.route)
-                    }
+                    },
+                    onRegisterOwnerSelected = {
+                        navController.navigate(Screen.RegisterOwner.route) }
                 )
             }
 
@@ -112,6 +120,41 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                     onBackClick = {
                         navController.popBackStack()
                     },
+                )
+            }
+
+            composable(Screen.LoginOwner.route) {
+                LogInOwnerScreen(
+                    viewModel = authViewModel,
+                    isDarkTheme = isDarkTheme,
+                    onThemeToggle = { isDarkTheme = !isDarkTheme },
+                    onLoginSuccess = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.RoleSelection.route) { inclusive = true }
+                        }
+                    },
+                    onNavigateToRegister = {
+                        navController.navigate(Screen.RegisterOwner.route)
+                    },
+                    onBackClick = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            composable(Screen.RegisterOwner.route) {
+                RegisterOwnerScreen(
+                    viewModel = authViewModel,
+                    isDarkTheme = isDarkTheme,
+                    onThemeToggle = { isDarkTheme = !isDarkTheme },
+                    onRegisterSuccess = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.RoleSelection.route) { inclusive = true }
+                        }
+                    },
+                    onBackClick = {
+                        navController.popBackStack()
+                    }
                 )
             }
 

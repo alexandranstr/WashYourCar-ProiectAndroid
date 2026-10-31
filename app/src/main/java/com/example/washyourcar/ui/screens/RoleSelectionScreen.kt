@@ -40,7 +40,8 @@ fun RoleSelectionScreen(
     onClientSelected: () -> Unit,
     onEmployeeSelected: () -> Unit,
     onOwnerSelected: () -> Unit,
-    onRegisterClientSelected: () -> Unit
+    onRegisterClientSelected: () -> Unit,
+    onRegisterOwnerSelected: () -> Unit
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -138,7 +139,10 @@ fun RoleSelectionScreen(
             Row(modifier = Modifier.padding(top = 8.dp)) {
                 FooterLink("Client") { onRegisterClientSelected() }
                 Text(" • ", color = MaterialTheme.colorScheme.onBackground)
-                FooterLink("Owner") { }
+
+                // AICI ERA PROBLEMA: am adăugat onRegisterOwnerSelected()
+                FooterLink("Owner") { onRegisterOwnerSelected() }
+
                 Text(" • ", color = MaterialTheme.colorScheme.onBackground)
                 FooterLink("Employee") { }
             }
@@ -174,6 +178,7 @@ fun GlowingOrb() {
         )
 
         drawGlowingOrb(
+            // AICI ERA O EROARE DE SINTAXA - Llipsea semnul minus. Corectat acum.
             centerOffset = Offset(w * 0.8f - (animProgress * 150), h * 0.6f),
             radius = 200f,
             color = color2
