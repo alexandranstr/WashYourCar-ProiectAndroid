@@ -27,4 +27,8 @@ interface EmployeeDao {
 
     @Query("SELECT * FROM employees WHERE email = :email AND carWashId IS NOT NULL")
     suspend fun getActivieEmployee(email: String): Employee?
+
+    @Query("UPDATE employees SET carWashId = :carWashId WHERE firebaseUid = :uid")
+    suspend fun assignCarWash(uid: String, carWashId: Int)
+
 }

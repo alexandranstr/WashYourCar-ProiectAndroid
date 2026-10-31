@@ -24,6 +24,8 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val carDao = AppDatabase.getDatabase(application).carDao()
     private val ownerDao = AppDatabase.getDatabase(application).ownerDao()
     private val _authState = MutableStateFlow(AuthState())
+
+    private val employeeDao = AppDatabase.getDatabase(application).employeeDao()
     val authState: StateFlow<AuthState> = _authState
 
     val isLoggedIn: Boolean
@@ -153,6 +155,53 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             }
             .addOnFailureListener { error ->
                 Log.e("Auth", "Register error: ${error.message}")
+                _authState.value = AuthState(errorMessage = error.message)
+            }
+    }
+
+    fun registerEmployee(
+        firstName: String,
+        lastName: String,
+        email: String,
+        phone: String,
+        accessToken: String,
+        password: String,
+        onSuccess: () -> Unit
+    ) {
+        if (firstName.isBlank() || lastName.isBlank() || email.isBlank() || phone.isBlank() || accessToken.isBlank() || password.isBlank()) {
+            _authState.value = AuthState(errorMessage = "Complete all fields!")
+            return
+        }
+
+        _authState.value = AuthState(isLoading = true)
+
+        auth.createUserWithEmailAndPassword(email, password)
+            .addOnSuccessListener { authResult ->
+                val firebaseUid = authResult.user?.uid
+
+                if (firebaseUid != null) {
+                    val newEmployee = Employee(
+                        firebaseUid = firebaseUid,
+                        carWashId = null,
+                        firstName = firstName,
+                        lastName = lastName,
+                        email = email,
+                        phoneNumber = phone,
+                        accessToken = accessToken
+                    )
+
+                    viewModelScope.launch {
+                        try {
+                            employeeDao.insert(newEmployee)
+                            _authState.value = AuthState()
+                            onSuccess()
+                        } catch (e: Exception) {
+                            _authState.value = AuthState(errorMessage = "Database failed: ${e.localizedMessage}")
+                        }
+                    }
+                }
+            }
+            .addOnFailureListener { error ->
                 _authState.value = AuthState(errorMessage = error.message)
             }
     }

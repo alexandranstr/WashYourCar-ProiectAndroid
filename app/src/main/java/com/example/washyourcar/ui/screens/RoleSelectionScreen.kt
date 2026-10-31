@@ -41,7 +41,8 @@ fun RoleSelectionScreen(
     onEmployeeSelected: () -> Unit,
     onOwnerSelected: () -> Unit,
     onRegisterClientSelected: () -> Unit,
-    onRegisterOwnerSelected: () -> Unit
+    onRegisterOwnerSelected: () -> Unit,
+    onRegisterEmployeeSelected: () -> Unit
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -140,11 +141,10 @@ fun RoleSelectionScreen(
                 FooterLink("Client") { onRegisterClientSelected() }
                 Text(" • ", color = MaterialTheme.colorScheme.onBackground)
 
-                // AICI ERA PROBLEMA: am adăugat onRegisterOwnerSelected()
                 FooterLink("Owner") { onRegisterOwnerSelected() }
 
                 Text(" • ", color = MaterialTheme.colorScheme.onBackground)
-                FooterLink("Employee") { }
+                FooterLink("Employee")  { onRegisterEmployeeSelected() }
             }
         }
     }
