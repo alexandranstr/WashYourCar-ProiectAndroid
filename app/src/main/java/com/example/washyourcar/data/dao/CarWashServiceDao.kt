@@ -35,4 +35,12 @@ interface CarWashServiceDao {
         ) ORDER BY name ASC
     """)
     suspend fun getUnassociatedServices(carWashId: Int): List<Service>
+
+    @Query("""
+        SELECT s.name
+        FROM services s
+        WHERE s.serviceId IN (:serviceIds)
+        ORDER BY s.name ASC
+    """)
+    suspend fun getServiceNamesByIds(serviceIds: List<Int>): List<String>
 }

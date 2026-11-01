@@ -50,7 +50,6 @@ fun OwnerEmployeeActivityScreen(
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            // Header pentru selectarea datei
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -73,7 +72,6 @@ fun OwnerEmployeeActivityScreen(
                 }
             }
 
-            // Lista programărilor
             if (appointments.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("No activity for this day.", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))

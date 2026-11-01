@@ -35,8 +35,8 @@ import com.example.washyourcar.viewmodel.AuthViewModel
 @Composable
 fun RegisterClientScreen(
     viewModel: AuthViewModel,
-    isDarkTheme: Boolean,           // Adăugat parametrul temei
-    onThemeToggle: () -> Unit,      // Adăugat funcția de toggle a temei
+    isDarkTheme: Boolean,
+    onThemeToggle: () -> Unit,
     onRegisterSuccess: () -> Unit,
     onBackClick: () -> Unit
 ) {
@@ -63,21 +63,19 @@ fun RegisterClientScreen(
             .verticalScroll(scrollState),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Header-ul simetric
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(120.dp) // Setat la 120dp pentru consistență
+                .height(120.dp)
                 .background(MaterialTheme.colorScheme.primary)
         ) {
             RegGlowingOrb()
 
-            // Titlul centrat
             Text(
                 text = "Wash Your Car!",
                 style = TextStyle(
                     color = MaterialTheme.colorScheme.onPrimary,
-                    fontSize = 35.sp, // Setat la 35sp
+                    fontSize = 35.sp,
                     fontWeight = FontWeight.Bold,
                     shadow = Shadow(
                         color = Color.Black.copy(alpha = 0.5f),
@@ -90,7 +88,6 @@ fun RegisterClientScreen(
                     .offset(y = 8.dp)
             )
 
-            // Butonul de BACK (Stânga)
             androidx.compose.material3.IconButton(
                 onClick = onBackClick,
                 modifier = Modifier
@@ -104,7 +101,6 @@ fun RegisterClientScreen(
                 )
             }
 
-            // Butonul de TEMĂ (Dreapta)
             androidx.compose.material3.IconButton(
                 onClick = onThemeToggle,
                 modifier = Modifier
@@ -282,7 +278,7 @@ fun RegGlowingOrb() {
         val w = size.width
         val h = size.height
         drawRegGlowingOrb(Offset(w * 0.2f + (animProgress * 80), h * 0.3f), 140f, color1)
-        drawRegGlowingOrb(Offset(w * 0.8f - (animProgress * 100), h * 0.6f), 180f, color2) // Corectat: adăugat "-"
+        drawRegGlowingOrb(Offset(w * 0.8f - (animProgress * 100), h * 0.6f), 180f, color2)
         drawRegGlowingOrb(Offset(w * 0.5f, h * 0.2f + (animProgress * 60)), 110f, Color.White)
     }
 }

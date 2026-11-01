@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,6 +31,7 @@ import com.example.washyourcar.ui.screens.*
 import com.example.washyourcar.ui.theme.WashYourCarTheme
 import com.example.washyourcar.ui.viewmodel.CarWashDetailViewModel
 import com.example.washyourcar.viewmodel.*
+import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String) {
     object RoleSelection : Screen("role_selection")
@@ -62,8 +64,19 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
         val navController = rememberNavController()
         val context = LocalContext.current
         val database = AppDatabase.getDatabase(context)
+        var startDestination by remember { mutableStateOf(Screen.RoleSelection.route) }
 
-        val startDestination = if (authViewModel.isLoggedIn) Screen.Home.route else Screen.RoleSelection.route
+        LaunchedEffect(Unit) {
+            launch {
+                val role = authViewModel.getUserRole()
+                startDestination = when (role) {
+                    is AuthViewModel.UserRole.Client -> Screen.Home.route
+                    is AuthViewModel.UserRole.Owner -> Screen.OwnerHome.route
+                    is AuthViewModel.UserRole.Employee -> Screen.EmployeeHome.route
+                    is AuthViewModel.UserRole.Unknown -> Screen.RoleSelection.route
+                }
+            }
+        }
 
         NavHost(
             navController = navController,
@@ -240,7 +253,9 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                         override fun <T : ViewModel> create(modelClass: Class<T>): T {
                             return com.example.washyourcar.ui.viewmodel.EmployeeHomeViewModel(
                                 employeeDao = database.employeeDao(),
-                                appointmentDao = database.appointmentDao()
+                                appointmentDao = database.appointmentDao(),
+                                carWashDao = database.carWashDao(),
+                                carWashServiceDao = database.carWashServiceDao()
                             ) as T
                         }
                     }

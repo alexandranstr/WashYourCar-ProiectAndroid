@@ -130,7 +130,7 @@ fun RoleSelectionScreen(
         }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(bottom = if (isLandscape) 16.dp else 80.dp) // Pe landscape micșorăm distanța de jos ca să nu iasă din ecran
+            modifier = Modifier.padding(bottom = if (isLandscape) 16.dp else 80.dp)
         ) {
             Text(
                 "Create your account as:",
@@ -178,7 +178,6 @@ fun GlowingOrb() {
         )
 
         drawGlowingOrb(
-            // AICI ERA O EROARE DE SINTAXA - Llipsea semnul minus. Corectat acum.
             centerOffset = Offset(w * 0.8f - (animProgress * 150), h * 0.6f),
             radius = 200f,
             color = color2

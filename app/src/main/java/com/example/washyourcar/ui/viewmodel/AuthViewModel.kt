@@ -23,6 +23,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val customerDao = AppDatabase.getDatabase(application).customerDao()
     private val carDao = AppDatabase.getDatabase(application).carDao()
     private val ownerDao = AppDatabase.getDatabase(application).ownerDao()
+    private val carWashDao = AppDatabase.getDatabase(application).carWashDao()
     private val _authState = MutableStateFlow(AuthState())
 
     private val employeeDao = AppDatabase.getDatabase(application).employeeDao()
@@ -30,6 +31,23 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     val isLoggedIn: Boolean
         get() = auth.currentUser != null
+
+    sealed class UserRole {
+        object Client : UserRole()
+        object Owner : UserRole()
+        object Employee : UserRole()
+        object Unknown : UserRole()
+    }
+
+    suspend fun getUserRole(): UserRole {
+        val firebaseUid = auth.currentUser?.uid ?: return UserRole.Unknown
+        return when {
+            customerDao.getCustomersById(firebaseUid) != null -> UserRole.Client
+            ownerDao.getById(firebaseUid) != null -> UserRole.Owner
+            employeeDao.getById(firebaseUid) != null -> UserRole.Employee
+            else -> UserRole.Unknown
+        }
+    }
 
     fun login(email: String, parola: String, onSuccess: () -> Unit) {
         _authState.value = AuthState(isLoading = true)
@@ -180,22 +198,30 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 val firebaseUid = authResult.user?.uid
 
                 if (firebaseUid != null) {
-                    val newEmployee = Employee(
-                        firebaseUid = firebaseUid,
-                        carWashId = null,
-                        firstName = firstName,
-                        lastName = lastName,
-                        email = email,
-                        phoneNumber = phone,
-                        accessToken = accessToken
-                    )
-
                     viewModelScope.launch {
                         try {
+                            val carWashId = carWashDao.getCarWashIdByAccessCode(accessToken)
+                            if (carWashId == null) {
+                                _authState.value = AuthState(errorMessage = "Invalid access code! Please check and try again.")
+                                return@launch
+                            }
+
+                            val newEmployee = Employee(
+                                firebaseUid = firebaseUid,
+                                carWashId = carWashId,
+                                firstName = firstName,
+                                lastName = lastName,
+                                email = email,
+                                phoneNumber = phone,
+                                accessToken = accessToken
+                            )
+
                             employeeDao.insert(newEmployee)
+                            Log.d("Auth", "Employee registered and assigned to car wash $carWashId")
                             _authState.value = AuthState()
                             onSuccess()
                         } catch (e: Exception) {
+                            Log.e("Auth", "Employee register error: ${e.message}")
                             _authState.value = AuthState(errorMessage = "Database failed: ${e.localizedMessage}")
                         }
                     }

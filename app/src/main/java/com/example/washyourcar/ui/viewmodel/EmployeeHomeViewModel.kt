@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.washyourcar.data.dao.AppointmentDao
+import com.example.washyourcar.data.dao.CarWashDao
+import com.example.washyourcar.data.dao.CarWashServiceDao
 import com.example.washyourcar.data.dao.EmployeeDao
 import com.example.washyourcar.data.entities.AppointmentWithDetails
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,7 +17,9 @@ import com.example.washyourcar.data.entities.Employee
 
 class EmployeeHomeViewModel(
     private val employeeDao: EmployeeDao,
-    private val appointmentDao: AppointmentDao
+    private val appointmentDao: AppointmentDao,
+    private val carWashDao: CarWashDao,
+    private val carWashServiceDao: CarWashServiceDao
 ) : ViewModel() {
 
     private val _appointments = MutableStateFlow<List<AppointmentWithDetails>>(emptyList())
@@ -27,16 +31,25 @@ class EmployeeHomeViewModel(
     private var currentCarWashId: Int? = null
 
     private val _currentEmployee = MutableStateFlow<Employee?>(null)
-
     val currentEmployee: StateFlow<Employee?> = _currentEmployee.asStateFlow()
+
+    private val _carWashName = MutableStateFlow<String?>(null)
+    val carWashName: StateFlow<String?> = _carWashName.asStateFlow()
+
+    private val _appointmentServiceNames = MutableStateFlow<Map<String, List<String>>>(emptyMap())
+    val appointmentServiceNames: StateFlow<Map<String, List<String>>> = _appointmentServiceNames.asStateFlow()
 
     fun initEmployee(firebaseUid: String) {
         viewModelScope.launch {
-
             val emp = employeeDao.getById(firebaseUid)
             _currentEmployee.value = emp
 
             currentCarWashId = emp?.carWashId
+
+            if (currentCarWashId != null) {
+                val name = carWashDao.getCarWashNameById(currentCarWashId!!)
+                _carWashName.value = name
+            }
 
             loadAppointmentsForSelectedDate()
         }
@@ -46,7 +59,7 @@ class EmployeeHomeViewModel(
         viewModelScope.launch {
             try {
                 employeeDao.assignCarWash(firebaseUid, carWashId)
-                initEmployee(firebaseUid) // Reîncărcăm datele angajatului și programările
+                initEmployee(firebaseUid)
             } catch (e: Exception) {
                 Log.e("EmployeeHomeVM", "Eroare la asignare: ${e.message}")
             }
@@ -82,8 +95,19 @@ class EmployeeHomeViewModel(
 
         viewModelScope.launch {
             try {
+                appointmentDao.updateAutomaticStatuses(System.currentTimeMillis())
+
                 val result = appointmentDao.getAppointmentsWithDetailsByDay(carWashId, startOfDay, endOfDay)
                 _appointments.value = result
+
+                val serviceNamesMap = mutableMapOf<String, List<String>>()
+                for (appointment in result) {
+                    if (appointment.appointment.serviceIds.isNotEmpty()) {
+                        val names = carWashServiceDao.getServiceNamesByIds(appointment.appointment.serviceIds)
+                        serviceNamesMap[appointment.appointment.appointmentId] = names
+                    }
+                }
+                _appointmentServiceNames.value = serviceNamesMap
             } catch (e: Exception) {
                 Log.e("EmployeeHomeVM", "Eroare la încărcarea programărilor: ${e.message}")
             }
@@ -94,7 +118,7 @@ class EmployeeHomeViewModel(
         viewModelScope.launch {
             try {
                 appointmentDao.updateStatus(appointmentId, "DONE")
-                loadAppointmentsForSelectedDate() // Reîncărcăm lista pentru a reflecta starea nouă
+                loadAppointmentsForSelectedDate()
             } catch (e: Exception) {
                 Log.e("EmployeeHomeVM", "Eroare la actualizarea statusului: ${e.message}")
             }
