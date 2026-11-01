@@ -19,6 +19,7 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
     private val customerDao = database.customerDao()
     private val carDao = database.carDao()
     private val appointmentDao = database.appointmentDao()
+    private val carWashServiceDao = database.carWashServiceDao()
 
     private val _carWashes = MutableStateFlow<List<CarWash>>(emptyList())
     val carWashes: StateFlow<List<CarWash>> = _carWashes.asStateFlow()
@@ -35,6 +36,9 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
     private val _selectedFilters = MutableStateFlow<Set<String>>(emptySet())
     val selectedFilters: StateFlow<Set<String>> = _selectedFilters.asStateFlow()
 
+    private val _allServiceNames = MutableStateFlow<List<String>>(emptyList())
+    val allServiceNames: StateFlow<List<String>> = _allServiceNames.asStateFlow()
+
     private val _currentCustomer = MutableStateFlow<Customer?>(null)
     val currentCustomer: StateFlow<Customer?> = _currentCustomer.asStateFlow()
 
@@ -47,6 +51,18 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
     init {
         loadCities()
         loadAllCarWashes()
+        loadAllServices()
+    }
+
+    private fun loadAllServices() {
+        viewModelScope.launch {
+            val allServices = mutableSetOf<String>()
+            for (carWash in carWashDao.getAllCarWashes()) {
+                val names = carWashDao.getServiceNamesByCarWashId(carWash.carWashId)
+                allServices.addAll(names)
+            }
+            _allServiceNames.value = allServices.sorted()
+        }
     }
 
     fun loadCustomerData(firebaseUid: String) {

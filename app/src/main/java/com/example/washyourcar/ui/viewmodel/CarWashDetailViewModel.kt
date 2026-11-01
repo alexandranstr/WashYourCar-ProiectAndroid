@@ -17,7 +17,8 @@ import java.util.UUID
 class CarWashDetailViewModel(
     private val carWashDao: CarWashDao,
     private val appointmentDao: AppointmentDao,
-    private val carDao: com.example.washyourcar.data.dao.CarDao
+    private val carDao: com.example.washyourcar.data.dao.CarDao,
+    private val carWashServiceDao: com.example.washyourcar.data.dao.CarWashServiceDao
 ) : ViewModel() {
 
     private val _carWash = MutableStateFlow<CarWash?>(null)
@@ -39,12 +40,16 @@ class CarWashDetailViewModel(
     private val _carWashServiceNames = MutableStateFlow<List<String>>(emptyList())
     val carWashServiceNames: StateFlow<List<String>> = _carWashServiceNames
 
+    private val _availableServices = MutableStateFlow<List<CarWashServiceDetails>>(emptyList())
+    val availableServices: StateFlow<List<CarWashServiceDetails>> = _availableServices
+
     fun loadCarWashDetails(carWashId: Int, customerUid: String) {
         viewModelScope.launch {
             _carWash.value = carWashDao.getCarWashById(carWashId)
             val carList = carDao.getCarsByCustomerId(customerUid)
             _customerCar.value = carList.firstOrNull()
             _carWashServiceNames.value = carWashDao.getServiceNamesByCarWashId(carWashId)
+            _availableServices.value = carWashServiceDao.getServicesByCarWashId(carWashId)
 
             try {
                 val tips = com.example.washyourcar.data.network.RetrofitClient.apiService.getTips()
@@ -133,7 +138,52 @@ class CarWashDetailViewModel(
                 customerId = customerId,
                 carWashId = carWashId,
                 employeeId = availableEmployees.first(),
-                serviceIds = serviceId,
+                serviceIds = listOf(serviceId),
+                licensePlate = licensePlate,
+                startTime = startTime,
+                endTime = endTime,
+                status = "CONFIRMED"
+            )
+
+            appointmentDao.insert(newAppointment)
+
+            val sharedPrefs = context.getSharedPreferences("WashYourCarPrefs", android.content.Context.MODE_PRIVATE)
+            val currentWashName = _carWash.value?.name ?: "Unknown Car Wash"
+
+            sharedPrefs.edit().apply {
+                putString("last_booked_wash_name", currentWashName)
+                putLong("last_booked_time", System.currentTimeMillis())
+            }.apply()
+
+            _isSuccess.value = true
+        }
+    }
+
+    fun confirmAppointmentWithServices(
+        context: Context,
+        customerId: String,
+        carWashId: Int,
+        serviceIds: List<Int>,
+        licensePlate: String,
+        startTime: Long,
+        durationMinutes: Int
+    ) {
+        viewModelScope.launch {
+            val endTime = startTime + (durationMinutes * 60 * 1000L)
+
+            val availableEmployees = appointmentDao.getAvailableEmployees(carWashId, startTime, endTime)
+
+            if (availableEmployees.isEmpty()) {
+                _errorMessage.value = "Employee no longer available. Please refresh slots."
+                return@launch
+            }
+
+            val newAppointment = Appointment(
+                appointmentId = UUID.randomUUID().toString(),
+                customerId = customerId,
+                carWashId = carWashId,
+                employeeId = availableEmployees.first(),
+                serviceIds = serviceIds,
                 licensePlate = licensePlate,
                 startTime = startTime,
                 endTime = endTime,

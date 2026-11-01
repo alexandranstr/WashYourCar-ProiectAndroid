@@ -35,8 +35,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Surface
@@ -82,14 +82,14 @@ fun CarWashDetailScreen(
 
     val randomTip by viewModel.randomTip.collectAsState()
     val carWashServiceNames by viewModel.carWashServiceNames.collectAsState()
+    val availableServices by viewModel.availableServices.collectAsState()
 
     var showBottomSheet by remember { mutableStateOf(false) }
     var showSuccessDialog by remember { mutableStateOf(false) }
 
     var selectedDateMillis by remember { mutableStateOf<Long?>(null) }
     var selectedTimeRange by remember { mutableStateOf("Morning") }
-    var selectedServiceId by remember { mutableStateOf<Int?>(null) }
-    var selectedServiceDuration by remember { mutableStateOf(0) }
+    var selectedServiceIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var selectedSlotStartTime by remember { mutableStateOf<Long?>(null) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -343,46 +343,60 @@ fun CarWashDetailScreen(
 
                 selectedDateMillis = datePickerState.selectedDateMillis
 
-                Text("Select service", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Text("Select services", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
 
-                val masterServices = listOf(
-                    Triple(1, "Exterior Wash", 15),
-                    Triple(2, "Interior Cleaning", 20),
-                    Triple(3, "Detailing", 60),
-                    Triple(4, "Polish", 90)
-                )
-
-                val availableLocalServices = masterServices.filter { (_, name, _) ->
-                    carWashServiceNames.any { it.equals(name, ignoreCase = true) }
-                }
-
-                if (availableLocalServices.isEmpty()) {
+                if (availableServices.isEmpty()) {
                     Text("No services available for this car wash.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                 } else {
-                    availableLocalServices.forEach { (id, name, duration) ->
+                    availableServices.forEach { serviceDetails ->
+                        val serviceId = serviceDetails.carWashService.serviceId
+                        val name = serviceDetails.serviceName
+                        val duration = serviceDetails.carWashService.duration
+                        val price = serviceDetails.carWashService.price
+
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    selectedServiceId = id
-                                    selectedServiceDuration = duration
+                                    selectedServiceIds = if (selectedServiceIds.contains(serviceId))
+                                        selectedServiceIds - serviceId
+                                    else
+                                        selectedServiceIds + serviceId
                                 }
                         ) {
-                            RadioButton(
-                                selected = selectedServiceId == id,
-                                onClick = {
-                                    selectedServiceId = id
-                                    selectedServiceDuration = duration
+                            Checkbox(
+                                checked = selectedServiceIds.contains(serviceId),
+                                onCheckedChange = { checked ->
+                                    selectedServiceIds = if (checked)
+                                        selectedServiceIds + serviceId
+                                    else
+                                        selectedServiceIds - serviceId
                                 },
-                                colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                    checkmarkColor = MaterialTheme.colorScheme.onPrimary
+                                )
                             )
-                            Text("$name ($duration min)", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                            Column(modifier = Modifier.padding(start = 4.dp)) {
+                                Text("$name ($duration min)", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Text("${price} RON", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
 
-                Text("Total duration: $selectedServiceDuration minutes", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
+                val totalDuration = availableServices
+                    .filter { selectedServiceIds.contains(it.carWashService.serviceId) }
+                    .sumOf { it.carWashService.duration }
+                val totalPrice = availableServices
+                    .filter { selectedServiceIds.contains(it.carWashService.serviceId) }
+                    .sumOf { it.carWashService.price.toDouble() }
+
+                if (selectedServiceIds.isNotEmpty()) {
+                    Text("Total duration: $totalDuration minutes", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
+                    Text("Total price: ${String.format("%.2f", totalPrice)} RON", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
+                }
 
                 Text("Select time range", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 var dropdownExpanded by remember { mutableStateOf(false) }
@@ -410,7 +424,10 @@ fun CarWashDetailScreen(
                 Button(
                     onClick = {
                         selectedDateMillis?.let {
-                            viewModel.generateSlots(carWashId, it, selectedServiceDuration, selectedTimeRange)
+                            val totalDur = availableServices
+                                .filter { svc -> selectedServiceIds.contains(svc.carWashService.serviceId) }
+                                .sumOf { svc -> svc.carWashService.duration }
+                            viewModel.generateSlots(carWashId, it, totalDur, selectedTimeRange)
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
@@ -451,19 +468,22 @@ fun CarWashDetailScreen(
                 Button(
                     onClick = {
                         val plate = customerCar?.licensePlate ?: "Test"
-                        if (selectedSlotStartTime != null && selectedServiceId != null) {
-                            viewModel.confirmAppointment(
+                        if (selectedSlotStartTime != null && selectedServiceIds.isNotEmpty()) {
+                            val totalDur = availableServices
+                                .filter { svc -> selectedServiceIds.contains(svc.carWashService.serviceId) }
+                                .sumOf { svc -> svc.carWashService.duration }
+                            viewModel.confirmAppointmentWithServices(
                                 context = context,
                                 customerId = firebaseUid,
                                 carWashId = carWashId,
-                                serviceId = selectedServiceId!!,
+                                serviceIds = selectedServiceIds.toList(),
                                 licensePlate = plate,
                                 startTime = selectedSlotStartTime!!,
-                                durationMinutes = selectedServiceDuration
+                                durationMinutes = totalDur
                             )
                         }
                     },
-                    enabled = selectedSlotStartTime != null,
+                    enabled = selectedSlotStartTime != null && selectedServiceIds.isNotEmpty(),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(22.dp)

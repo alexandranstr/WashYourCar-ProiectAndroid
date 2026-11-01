@@ -51,6 +51,7 @@ fun HomeScreen(
     val currentCustomer by viewModel.currentCustomer.collectAsState()
     val customerCar by viewModel.customerCar.collectAsState()
     val activeAppointment by viewModel.activeAppointment.collectAsState()
+    val allServiceNames by viewModel.allServiceNames.collectAsState()
     var appointmentsExpanded by remember { mutableStateOf(false) }
     var filterBoxVisible by remember { mutableStateOf(false) }
     var accountBoxExpanded by remember { mutableStateOf(false) }
@@ -387,14 +388,7 @@ fun HomeScreen(
                         elevation = CardDefaults.cardElevation(2.dp)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            val filterOptions = listOf(
-                                "Exterior Wash",
-                                "Interior Cleaning",
-                                "Detailing",
-                                "Polish"
-                            )
-
-                            filterOptions.forEach { filter ->
+                            allServiceNames.forEach { filter ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
