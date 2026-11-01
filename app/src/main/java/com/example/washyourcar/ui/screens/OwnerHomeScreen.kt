@@ -129,7 +129,7 @@ fun OwnerHomeScreen(
                     title = {
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             Text(
-                                text = "My Car Wash", // Aici vei pune numele spălătoriei din BD
+                                text = "My Car Wash",
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 22.sp,
@@ -169,7 +169,6 @@ fun OwnerHomeScreen(
                             Text("Car Wash Details", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                             Spacer(modifier = Modifier.height(4.dp))
 
-                            // Acestea vor veni din tabela ta CarWash
                             Text(text = "City: Galati", fontSize = 14.sp, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f))
                             Text(text = "Open: 08:00 - 22:00", fontSize = 14.sp, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f))
 

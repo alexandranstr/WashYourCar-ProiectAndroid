@@ -46,6 +46,8 @@ fun EmployeeHomeScreen(
 
     val selectedDate by viewModel.selectedDate.collectAsState()
     val appointments by viewModel.appointments.collectAsState()
+    val carWashName by viewModel.carWashName.collectAsState()
+    val appointmentServiceNames by viewModel.appointmentServiceNames.collectAsState()
 
     var showDatePicker by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDate.timeInMillis)
@@ -104,7 +106,6 @@ fun EmployeeHomeScreen(
                         )
                         HorizontalDivider(color = menuTitleColor.copy(alpha = 0.2f))
 
-                        // --- SECTION: ACCOUNT DETAILS ---
                         Text(
                             text = "Account Details",
                             fontSize = 16.sp,
@@ -142,7 +143,14 @@ fun EmployeeHomeScreen(
 
                                     Spacer(modifier = Modifier.height(4.dp))
 
-                                    if (currentEmployee?.carWashId != null) {
+                                    if (carWashName != null) {
+                                        Text(
+                                            text = "Car Wash: $carWashName",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    } else if (currentEmployee?.carWashId != null) {
                                         Text(
                                             text = "Assigned Car Wash: #${currentEmployee!!.carWashId}",
                                             fontSize = 14.sp,
@@ -150,16 +158,11 @@ fun EmployeeHomeScreen(
                                             color = MaterialTheme.colorScheme.primary
                                         )
                                     } else {
-                                        Button(
-                                            onClick = {
-                                                viewModel.assignCarWashToEmployee(firebaseUid, 1)
-                                            },
-                                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                                            shape = RoundedCornerShape(8.dp),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text("Assign to CarWash #1", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                        }
+                                        Text(
+                                            text = "No car wash assigned",
+                                            fontSize = 14.sp,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
                                     }
                                 }
                             }
@@ -259,8 +262,10 @@ fun EmployeeHomeScreen(
                         modifier = Modifier.fillMaxSize().padding(top = 8.dp)
                     ) {
                         items(appointments) { details ->
+                            val serviceNames = appointmentServiceNames[details.appointment.appointmentId] ?: emptyList()
                             EmployeeAppointmentCard(
                                 details = details,
+                                serviceNames = serviceNames,
                                 onDoneClick = { viewModel.markAppointmentAsDone(details.appointment.appointmentId) }
                             )
                         }
@@ -274,6 +279,7 @@ fun EmployeeHomeScreen(
 @Composable
 fun EmployeeAppointmentCard(
     details: AppointmentWithDetails,
+    serviceNames: List<String>,
     onDoneClick: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -283,14 +289,37 @@ fun EmployeeAppointmentCard(
     val endTime = timeFormatter.format(Date(details.appointment.endTime))
 
     val customerName = "${details.customerFirstName ?: ""} ${details.customerLastName ?: ""}".trim()
-    val status = details.appointment.status // "CONFIRMED", "DONE", etc.
+    val status = details.appointment.status
 
-    val buttonColor = if (status == "DONE") Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary
+    val isDark = MaterialTheme.colorScheme.background == Color.Black ||
+            MaterialTheme.colorScheme.background == Color(0xFF121212)
+
+    val (statusLabel, statusColor, statusBackgroundColor) = when (status) {
+        "CONFIRMED" -> {
+            if (isDark) Triple("Pending", Color.White, Color(0xFFF57F17))
+            else Triple("Pending", Color.White, Color(0xFFFFA000))
+        }
+        "IN_PROGRESS" -> {
+            if (isDark) Triple("In Progress", Color.White, Color(0xFFE65100))
+            else Triple("In Progress", Color.White, Color(0xFFD84315))
+        }
+        "DONE" -> {
+            if (isDark) Triple("Done", Color.White, Color(0xFF2E7D32))
+            else Triple("Done", Color.White, Color(0xFF388E3C))
+        }
+        "CANCELED" -> {
+            if (isDark) Triple("Cancelled", Color.White, Color(0xFFC62828))
+            else Triple("Cancelled", Color.White, Color(0xFFD32F2F))
+        }
+        else -> Triple(status, Color.White, Color.Gray)
+    }
+
+    val canMarkDone = status == "CONFIRMED" || status == "IN_PROGRESS"
 
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), // Fundal închis ca în imagine
-        elevation = CardDefaults.cardElevation(2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(4.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -302,7 +331,7 @@ fun EmployeeAppointmentCard(
                     text = "$startTime - $endTime",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.width(115.dp)
                 )
 
@@ -310,32 +339,52 @@ fun EmployeeAppointmentCard(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(text = customerName, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(text = "Car: ${details.appointment.licensePlate}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                    Text(text = customerName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(text = "Car: ${details.appointment.licensePlate}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
-                Button(
-                    onClick = onDoneClick,
-                    enabled = status != "DONE",
-                    colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                    modifier = Modifier.height(36.dp)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(statusBackgroundColor)
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
-                    Text(status, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    Text(
+                        text = statusLabel,
+                        color = statusColor,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Button(
-                onClick = { expanded = !expanded },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                modifier = Modifier.height(32.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("Details", color = MaterialTheme.colorScheme.onPrimary, fontSize = 12.sp)
+                Button(
+                    onClick = { expanded = !expanded },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                    modifier = Modifier.height(32.dp).weight(1f)
+                ) {
+                    Text("Details", color = MaterialTheme.colorScheme.onPrimary, fontSize = 12.sp)
+                }
+
+                if (canMarkDone) {
+                    Button(
+                        onClick = onDoneClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                        modifier = Modifier.height(32.dp).weight(1f)
+                    ) {
+                        Text("Mark Done", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
             }
 
             AnimatedVisibility(visible = expanded) {
@@ -344,15 +393,23 @@ fun EmployeeAppointmentCard(
                         .fillMaxWidth()
                         .padding(top = 12.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.05f)) // Gri mai deschis
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
                         .padding(12.dp)
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = "Services: Wash & Clean", // Aici poți pune numele serviciului din DB dacă îl adaugi ulterior
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        if (serviceNames.isNotEmpty()) {
+                            Text(
+                                text = "Services: ${serviceNames.joinToString(", ")}",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            Text(
+                                text = "Services: Unknown",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         Text(
                             text = "Phone: ${details.customerPhone ?: "N/A"}",
                             fontSize = 14.sp,

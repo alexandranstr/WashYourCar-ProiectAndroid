@@ -57,7 +57,6 @@ fun HomeScreen(
     var accountBoxExpanded by remember { mutableStateOf(false) }
     var showCancelConfirmationDialog by remember { mutableStateOf(false) }
 
-    // Culori dinamice pentru meniul lateral
     val menuTitleColor = if (isDarkTheme) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
 
     LaunchedEffect(firebaseUid) {
