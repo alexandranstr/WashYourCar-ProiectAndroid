@@ -45,6 +45,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -84,10 +86,11 @@ fun CarWashDetailScreen(
     val carWashServiceNames by viewModel.carWashServiceNames.collectAsState()
     val availableServices by viewModel.availableServices.collectAsState()
 
+    var bookingStep by remember { mutableStateOf(0) }
+    var checkedSelection by remember { mutableStateOf<String?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
     var showSuccessDialog by remember { mutableStateOf(false) }
 
-    var selectedDateMillis by remember { mutableStateOf<Long?>(null) }
     var selectedTimeRange by remember { mutableStateOf("Morning") }
     var selectedServiceIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var selectedSlotStartTime by remember { mutableStateOf<Long?>(null) }
@@ -103,6 +106,14 @@ fun CarWashDetailScreen(
             }
         }
     )
+
+    val selectedDateMillis = datePickerState.selectedDateMillis
+    val selectionKey = "${selectedServiceIds.sorted()}:$selectedDateMillis:$selectedTimeRange"
+    LaunchedEffect(selectionKey) {
+        selectedSlotStartTime = null
+        checkedSelection = null
+        viewModel.clearAvailableSlots()
+    }
 
     LaunchedEffect(Unit) {
         weatherViewModel.fetchWeather("Brasov", "09981e4b7d1730200bcc5f422d1f6f85")
@@ -146,6 +157,7 @@ fun CarWashDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.washYourCarHeader(),
                 title = { Text(carWash?.name ?: "Details", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -157,7 +169,18 @@ fun CarWashDetailScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        carWash?.let { wash ->
+        if (carWash == null) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                LoadingCardSkeleton(lines = 4)
+                LoadingCardSkeleton(lines = 3)
+            }
+        } else carWash?.let { wash ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -187,7 +210,6 @@ fun CarWashDetailScreen(
                             )
                         }
                     }
-                }
 
                 lastBookedWash?.let { washName ->
                     Card(
@@ -216,7 +238,7 @@ fun CarWashDetailScreen(
                 }
 
                 Card(
-                    shape = RoundedCornerShape(20.dp),
+                    shape = WashYourCarCardShape,
                     modifier = Modifier.fillMaxWidth(),
                     elevation = CardDefaults.cardElevation(6.dp)
                 ) {
@@ -281,7 +303,6 @@ fun CarWashDetailScreen(
                                         }
                                     }
                                 }
-                            }
                         }
                     }
                 }
@@ -289,9 +310,10 @@ fun CarWashDetailScreen(
                 Spacer(modifier = Modifier.weight(1f))
 
                 Button(
-                    onClick = { showBottomSheet = true },
+                    elevation = washYourCarButtonElevation(),
+                    onClick = { bookingStep = 0; showBottomSheet = true },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = RoundedCornerShape(22.dp),
+                    shape = WashYourCarButtonShape,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp)
@@ -302,6 +324,8 @@ fun CarWashDetailScreen(
         }
     }
 
+    val bookingScroll = rememberScrollState()
+    LaunchedEffect(bookingStep) { bookingScroll.scrollTo(0) }
     if (showBottomSheet) {
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
@@ -312,37 +336,27 @@ fun CarWashDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 10.dp)
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(bookingScroll),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text("Schedule appointment", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
 
-                Text("Select date", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                DatePicker(
-                    state = datePickerState,
-                    title = null,
-                    headline = null,
-                    showModeToggle = false,
-                    colors = DatePickerDefaults.colors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface,
-                        headlineContentColor = MaterialTheme.colorScheme.onSurface,
-                        weekdayContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        subheadContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        yearContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        currentYearContentColor = MaterialTheme.colorScheme.primary,
-                        selectedYearContentColor = MaterialTheme.colorScheme.onPrimary,
-                        selectedYearContainerColor = MaterialTheme.colorScheme.primary,
-                        dayContentColor = MaterialTheme.colorScheme.onSurface,
-                        selectedDayContentColor = MaterialTheme.colorScheme.onPrimary,
-                        selectedDayContainerColor = MaterialTheme.colorScheme.primary,
-                        todayContentColor = MaterialTheme.colorScheme.primary,
-                        todayDateBorderColor = MaterialTheme.colorScheme.primary
-                    )
+
+                val totalDuration = availableServices
+                    .filter { selectedServiceIds.contains(it.carWashService.serviceId) }
+                    .sumOf { it.carWashService.duration }
+                val totalPrice = availableServices
+                    .filter { selectedServiceIds.contains(it.carWashService.serviceId) }
+                    .sumOf { it.carWashService.price.toDouble() }
+
+
+                BookingStepIndicator(
+                    currentStep = bookingStep,
+                    canOpenDate = selectedServiceIds.isNotEmpty(),
+                    canOpenReview = selectedSlotStartTime != null && checkedSelection == selectionKey,
+                    onStepSelected = { bookingStep = it }
                 )
-
-                selectedDateMillis = datePickerState.selectedDateMillis
-
+                if (bookingStep == 0) {
                 Text("Select services", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
 
                 if (availableServices.isEmpty()) {
@@ -386,23 +400,48 @@ fun CarWashDetailScreen(
                     }
                 }
 
-                val totalDuration = availableServices
-                    .filter { selectedServiceIds.contains(it.carWashService.serviceId) }
-                    .sumOf { it.carWashService.duration }
-                val totalPrice = availableServices
-                    .filter { selectedServiceIds.contains(it.carWashService.serviceId) }
-                    .sumOf { it.carWashService.price.toDouble() }
-
                 if (selectedServiceIds.isNotEmpty()) {
                     Text("Total duration: $totalDuration minutes", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
                     Text("Total price: ${String.format("%.2f", totalPrice)} RON", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
                 }
+
+
+                    Button(onClick = { bookingStep = 1 }, enabled = selectedServiceIds.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text("Choose date and time") }
+                }
+                if (bookingStep == 1) {
+                Text("Select date", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                DatePicker(
+                    state = datePickerState,
+                    title = null,
+                    headline = null,
+                    showModeToggle = false,
+                    colors = DatePickerDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        headlineContentColor = MaterialTheme.colorScheme.onSurface,
+                        weekdayContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        subheadContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        yearContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        currentYearContentColor = MaterialTheme.colorScheme.primary,
+                        selectedYearContentColor = MaterialTheme.colorScheme.onPrimary,
+                        selectedYearContainerColor = MaterialTheme.colorScheme.primary,
+                        dayContentColor = MaterialTheme.colorScheme.onSurface,
+                        selectedDayContentColor = MaterialTheme.colorScheme.onPrimary,
+                        selectedDayContainerColor = MaterialTheme.colorScheme.primary,
+                        todayContentColor = MaterialTheme.colorScheme.primary,
+                        todayDateBorderColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+
+
+
 
                 Text("Select time range", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 var dropdownExpanded by remember { mutableStateOf(false) }
 
                 Box {
                     Button(
+                        elevation = washYourCarButtonElevation(),
                         onClick = { dropdownExpanded = true },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                     ) {
@@ -422,11 +461,15 @@ fun CarWashDetailScreen(
                 }
 
                 Button(
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp, disabledElevation = 0.dp),
+                    enabled = selectedDateMillis != null && selectedServiceIds.isNotEmpty(),
                     onClick = {
                         selectedDateMillis?.let {
                             val totalDur = availableServices
                                 .filter { svc -> selectedServiceIds.contains(svc.carWashService.serviceId) }
                                 .sumOf { svc -> svc.carWashService.duration }
+                            selectedSlotStartTime = null
+                            checkedSelection = selectionKey
                             viewModel.generateSlots(carWashId, it, totalDur, selectedTimeRange)
                         }
                     },
@@ -440,7 +483,7 @@ fun CarWashDetailScreen(
                     Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
                 }
 
-                if (availableSlots.isNotEmpty()) {
+                if (availableSlots.isNotEmpty() && checkedSelection == selectionKey) {
                     Text("Available time slots", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
 
                     LazyVerticalGrid(
@@ -454,6 +497,7 @@ fun CarWashDetailScreen(
                             val isSelected = selectedSlotStartTime == timeMs
 
                             Button(
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp, disabledElevation = 0.dp),
                                 onClick = { selectedSlotStartTime = timeMs },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
@@ -465,7 +509,23 @@ fun CarWashDetailScreen(
                     }
                 }
 
+
+                    Button(onClick = { bookingStep = 2 }, enabled = selectedSlotStartTime != null && checkedSelection == selectionKey, modifier = Modifier.fillMaxWidth()) { Text("Review appointment") }
+                    TextButton(onClick = { bookingStep = 0 }) { Text("Back to services") }
+                }
+                if (bookingStep == 2) {
+                    Text("Review your appointment", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text(carWash?.name ?: "Car wash")
+                    availableServices.filter { selectedServiceIds.contains(it.carWashService.serviceId) }.forEach {
+                        Text(it.serviceName)
+                    }
+                    Text("Total duration: $totalDuration minutes")
+                    Text("Total price: ${String.format("%.2f", totalPrice)} RON")
+                    selectedSlotStartTime?.let { Text(SimpleDateFormat("EEE, d MMM yyyy · HH:mm", Locale.getDefault()).format(Date(it))) }
+                    Text("Vehicle: ${customerCar?.licensePlate ?: "Not available"}")
+                    errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 Button(
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp, pressedElevation = 1.dp, disabledElevation = 0.dp),
                     onClick = {
                         val plate = customerCar?.licensePlate ?: "Test"
                         if (selectedSlotStartTime != null && selectedServiceIds.isNotEmpty()) {
@@ -483,16 +543,20 @@ fun CarWashDetailScreen(
                             )
                         }
                     },
-                    enabled = selectedSlotStartTime != null && selectedServiceIds.isNotEmpty(),
+                    enabled = selectedSlotStartTime != null && selectedServiceIds.isNotEmpty() && checkedSelection == selectionKey,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(22.dp)
+                    shape = WashYourCarButtonShape
                 ) {
                     Text("Confirm appointment", color = MaterialTheme.colorScheme.onPrimary)
                 }
 
+                    TextButton(onClick = { bookingStep = 1 }) { Text("Change date or time") }
+                }
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
+    }
+}
     }
 }

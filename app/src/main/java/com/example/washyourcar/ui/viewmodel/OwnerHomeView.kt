@@ -24,6 +24,7 @@ class OwnerHomeViewModel(
 
     fun initOwner(firebaseUid: String) {
         viewModelScope.launch {
+            _currentOwner.value = ownerDao.getById(firebaseUid)
             val carWashId = 1
             _services.value = carWashServiceDao.getServicesByCarWashId(carWashId)
         }

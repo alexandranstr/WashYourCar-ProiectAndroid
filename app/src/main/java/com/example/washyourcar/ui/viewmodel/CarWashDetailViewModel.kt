@@ -63,7 +63,16 @@ class CarWashDetailViewModel(
         }
     }
 
+    private var slotRequest = 0
+
+    fun clearAvailableSlots() {
+        slotRequest++
+        _availableSlots.value = emptyList()
+        _errorMessage.value = null
+    }
+
     fun generateSlots(carWashId: Int, dateMillis: Long, durationMinutes: Int, timeRange: String) {
+        val request = ++slotRequest
         viewModelScope.launch {
             _availableSlots.value = emptyList()
             _errorMessage.value = null
@@ -106,6 +115,7 @@ class CarWashDetailViewModel(
                 }
             }
 
+            if (request != slotRequest) return@launch
             if (slots.isEmpty()) {
                 _errorMessage.value = "No available slots in this period."
             } else {

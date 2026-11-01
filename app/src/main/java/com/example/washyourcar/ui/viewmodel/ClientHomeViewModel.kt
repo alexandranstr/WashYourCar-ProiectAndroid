@@ -11,6 +11,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.catch
+import com.google.firebase.auth.FirebaseAuth
 
 class ClientHomeViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -65,13 +70,42 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    fun loadCustomerData(firebaseUid: String) {
-        viewModelScope.launch {
-            val clientGasit = customerDao.getCustomersById(firebaseUid)
-            _currentCustomer.value = clientGasit
+    private var profileJob: Job? = null
+    private val _profileLoading = MutableStateFlow(false)
+    val profileLoading = _profileLoading.asStateFlow()
+    private val _profileMessage = MutableStateFlow<String?>(null)
+    val profileMessage = _profileMessage.asStateFlow()
+    private val _signedInEmail = MutableStateFlow<String?>(null)
+    val signedInEmail = _signedInEmail.asStateFlow()
 
-            val masinaGasita = carDao.getCarsByCustomerId(firebaseUid).firstOrNull()
-            _customerCar.value = masinaGasita
+    fun loadCustomerData(firebaseUid: String) {
+        profileJob?.cancel()
+        _currentCustomer.value = null
+        _customerCar.value = null
+        _profileMessage.value = null
+        val user = FirebaseAuth.getInstance().currentUser
+        _signedInEmail.value = user?.takeIf { it.uid == firebaseUid }?.email
+        if (firebaseUid.isBlank() || user?.uid != firebaseUid) {
+            _profileLoading.value = false
+            _profileMessage.value = "Your session is unavailable. Please sign out and sign in again."
+            return
+        }
+        _profileLoading.value = true
+        profileJob = viewModelScope.launch {
+            combine(customerDao.observeCustomer(firebaseUid), carDao.observeCars(firebaseUid)) { customer, cars ->
+                customer to cars.firstOrNull()
+            }.catch { error ->
+                if (error is CancellationException) throw error
+                _profileLoading.value = false
+                _profileMessage.value = "Couldn’t load account details. Please try again."
+            }.collect { (customer, car) ->
+                _currentCustomer.value = customer
+                _customerCar.value = car
+                _profileLoading.value = false
+                _profileMessage.value = if (customer == null)
+                    "You are signed in, but no customer profile is stored on this device. Name, phone and vehicle details are stored locally and are not restored by signing in."
+                    else null
+            }
         }
     }
 

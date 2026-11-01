@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -58,6 +59,7 @@ fun RegisterOwnerScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(120.dp)
+                .shadow(4.dp)
                 .background(MaterialTheme.colorScheme.primary)
         ) {
             OwnerGlowingOrb()
@@ -170,7 +172,8 @@ fun RegisterOwnerScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(55.dp)
-                    .clip(RoundedCornerShape(30.dp)),
+                    .shadow(6.dp, RoundedCornerShape(18.dp), clip = false)
+                .clip(RoundedCornerShape(18.dp)),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                 contentPadding = PaddingValues()
             ) {

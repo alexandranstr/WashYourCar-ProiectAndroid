@@ -8,6 +8,9 @@ import com.example.washyourcar.data.entities.Customer
 
 @Dao
 interface CustomerDao {
+    @Query("SELECT * FROM customers WHERE firebaseUid = :uid")
+    fun observeCustomer(uid: String): kotlinx.coroutines.flow.Flow<Customer?>
+
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(customer: Customer)

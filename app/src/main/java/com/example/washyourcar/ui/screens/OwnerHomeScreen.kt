@@ -56,7 +56,8 @@ fun OwnerHomeScreen(
     onNavigateToEmployeeActivity: () -> Unit,
     onNavigateToCarWashMonitoring: () -> Unit,
     onNavigateToManageAccount: () -> Unit,
-    viewModel: OwnerHomeViewModel
+    viewModel: OwnerHomeViewModel,
+    bottomBar: @Composable () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -124,8 +125,10 @@ fun OwnerHomeScreen(
         }
     ) {
         Scaffold(
+            bottomBar = bottomBar,
             topBar = {
                 TopAppBar(
+                    modifier = Modifier.washYourCarHeader(),
                     title = {
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             Text(

@@ -64,6 +64,17 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
         val navController = rememberNavController()
         val context = LocalContext.current
         val database = AppDatabase.getDatabase(context)
+        val navigateOwnerTab: (String) -> Unit = { route ->
+            if (route == Screen.OwnerHome.route) {
+                navController.popBackStack(Screen.OwnerHome.route, false)
+            } else {
+                navController.navigate(route) {
+                    popUpTo(Screen.OwnerHome.route) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+        }
         var startDestination by remember { mutableStateOf(Screen.RoleSelection.route) }
 
         LaunchedEffect(Unit) {
@@ -180,9 +191,10 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                         authViewModel.logout()
                         navController.navigate(Screen.RoleSelection.route) { popUpTo(Screen.OwnerHome.route) { inclusive = true } }
                     },
-                    onNavigateToEmployeeActivity = { navController.navigate(Screen.EmployeeActivity.route) },
-                    onNavigateToCarWashMonitoring = { navController.navigate(Screen.CarWashMonitoring.route) },
-                    onNavigateToManageAccount = { navController.navigate(Screen.ManageAccount.route) },
+                    onNavigateToEmployeeActivity = { navigateOwnerTab(Screen.EmployeeActivity.route) },
+                    onNavigateToCarWashMonitoring = { navigateOwnerTab(Screen.CarWashMonitoring.route) },
+                    onNavigateToManageAccount = { navigateOwnerTab(Screen.ManageAccount.route) },
+                    bottomBar = { OwnerBottomBar(Screen.OwnerHome.route, navigateOwnerTab) },
                     viewModel = ownerHomeViewModel
                 )
             }
@@ -201,6 +213,7 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
 
                 OwnerEmployeeActivityScreen(
                     onBack = { navController.popBackStack() },
+                    bottomBar = { OwnerBottomBar(Screen.EmployeeActivity.route, navigateOwnerTab) },
                     viewModel = activityViewModel
                 )
             }
@@ -219,14 +232,25 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
 
                 OwnerCarWashMonitoringScreen(
                     onBack = { navController.popBackStack() },
+                    bottomBar = { OwnerBottomBar(Screen.CarWashMonitoring.route, navigateOwnerTab) },
                     viewModel = monitoringViewModel
                 )
             }
 
             composable(Screen.ManageAccount.route) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Manage Account Screen")
-                }
+                OwnerAccountScreen(
+                    uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "",
+                    ownerDao = database.ownerDao(),
+                    isDarkTheme = isDarkTheme,
+                    onThemeToggle = { isDarkTheme = !isDarkTheme },
+                    onLogout = {
+                        authViewModel.logout()
+                        navController.navigate(Screen.RoleSelection.route) {
+                            popUpTo(Screen.OwnerHome.route) { inclusive = true }
+                        }
+                    },
+                    bottomBar = { OwnerBottomBar(Screen.ManageAccount.route, navigateOwnerTab) }
+                )
             }
 
             composable(Screen.Home.route) {

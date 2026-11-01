@@ -18,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -67,6 +68,7 @@ fun RegisterClientScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(120.dp)
+                .shadow(4.dp)
                 .background(MaterialTheme.colorScheme.primary)
         ) {
             RegGlowingOrb()
@@ -187,7 +189,8 @@ fun RegisterClientScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(55.dp)
-                    .clip(RoundedCornerShape(30.dp)),
+                    .shadow(6.dp, RoundedCornerShape(18.dp), clip = false)
+                .clip(RoundedCornerShape(18.dp)),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                 contentPadding = PaddingValues()
             ) {
@@ -240,7 +243,7 @@ fun RegClearTextField(
         onValueChange = onValueChange,
         modifier = Modifier.fillMaxWidth().height(55.dp),
         placeholder = { Text(text = label, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f), fontSize = 11.sp) },
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         singleLine = true,
         visualTransformation = if (isPasswordInput && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
         trailingIcon = {

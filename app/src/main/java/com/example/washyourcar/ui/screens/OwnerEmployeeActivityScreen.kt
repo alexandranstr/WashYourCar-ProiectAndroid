@@ -27,7 +27,8 @@ import java.util.Locale
 @Composable
 fun OwnerEmployeeActivityScreen(
     onBack: () -> Unit,
-    viewModel: EmployeeActivityViewModel
+    viewModel: EmployeeActivityViewModel,
+    bottomBar: @Composable () -> Unit = {}
 ) {
     val selectedDate by viewModel.selectedDate.collectAsState()
     val appointments by viewModel.appointments.collectAsState()
@@ -36,8 +37,10 @@ fun OwnerEmployeeActivityScreen(
     val displayedDate = dateFormatter.format(selectedDate.time)
 
     Scaffold(
+            bottomBar = bottomBar,
         topBar = {
             TopAppBar(
+                modifier = Modifier.washYourCarHeader(),
                 title = { Text("Employee Activity", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

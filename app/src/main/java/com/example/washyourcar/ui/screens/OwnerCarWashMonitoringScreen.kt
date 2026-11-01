@@ -31,7 +31,8 @@ import com.example.washyourcar.ui.viewmodel.CarWashMonitoringViewModel
 @Composable
 fun OwnerCarWashMonitoringScreen(
     onBack: () -> Unit,
-    viewModel: CarWashMonitoringViewModel
+    viewModel: CarWashMonitoringViewModel,
+    bottomBar: @Composable () -> Unit = {}
 ) {
     val activeServices by viewModel.activeServices.collectAsState()
     val availableServices by viewModel.availableServices.collectAsState()
@@ -41,8 +42,10 @@ fun OwnerCarWashMonitoringScreen(
     var serviceToEdit by remember { mutableStateOf<CarWashServiceDetails?>(null) }
 
     Scaffold(
+            bottomBar = bottomBar,
         topBar = {
             TopAppBar(
+                modifier = Modifier.washYourCarHeader(),
                 title = { Text("Car Wash Monitoring", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

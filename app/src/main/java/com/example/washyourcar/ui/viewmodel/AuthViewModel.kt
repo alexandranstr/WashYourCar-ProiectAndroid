@@ -64,6 +64,41 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             }
     }
 
+    fun loginClient(email: String, parola: String, onSuccess: () -> Unit) {
+        _authState.value = AuthState(isLoading = true)
+
+        auth.signInWithEmailAndPassword(email, parola)
+            .addOnSuccessListener { result ->
+                val firebaseUid = result.user?.uid
+                viewModelScope.launch {
+                    try {
+                        val hasCustomerProfile = firebaseUid?.let { customerDao.getCustomersById(it) != null } == true
+                        val hasRegisteredCar = firebaseUid?.let { carDao.getCarsByCustomerId(it).isNotEmpty() } == true
+                        if (hasCustomerProfile && hasRegisteredCar) {
+                            Log.d("Auth", "Client login successful with complete profile")
+                            _authState.value = AuthState()
+                            onSuccess()
+                        } else {
+                            auth.signOut()
+                            _authState.value = AuthState(
+                                errorMessage = "This client account does not have a complete profile. Please register again."
+                            )
+                        }
+                    } catch (error: Exception) {
+                        auth.signOut()
+                        _authState.value = AuthState(
+                            errorMessage = "Could not load your profile. Please try again."
+                        )
+                        Log.e("Auth", "Client profile validation error: ${error.message}")
+                    }
+                }
+            }
+            .addOnFailureListener { error ->
+                Log.e("Auth", "Client login error: ${error.message}")
+                _authState.value = AuthState(errorMessage = error.message)
+            }
+    }
+
     fun registerOwner(
         firstName: String,
         lastName: String,

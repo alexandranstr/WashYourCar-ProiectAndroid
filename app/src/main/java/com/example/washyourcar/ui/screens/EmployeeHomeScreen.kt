@@ -1,6 +1,13 @@
 package com.example.washyourcar.ui.screens
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,7 +20,6 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.washyourcar.data.entities.AppointmentWithDetails
 import com.example.washyourcar.ui.viewmodel.EmployeeHomeViewModel
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -41,8 +46,9 @@ fun EmployeeHomeScreen(
     onLogout: () -> Unit,
     viewModel: EmployeeHomeViewModel
 ) {
-    val scope = rememberCoroutineScope()
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    var selectedTab by rememberSaveable { mutableStateOf("Appointments") }
+    val appointmentsListState = rememberLazyListState()
+    BackHandler(enabled = selectedTab == "Account") { selectedTab = "Appointments" }
 
     val selectedDate by viewModel.selectedDate.collectAsState()
     val appointments by viewModel.appointments.collectAsState()
@@ -54,8 +60,6 @@ fun EmployeeHomeScreen(
 
     val dateFormatter = SimpleDateFormat("EEE, dd MMM", Locale.getDefault())
     val displayedDate = dateFormatter.format(selectedDate.time)
-
-    val menuTitleColor = if (isDarkTheme) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
 
     LaunchedEffect(firebaseUid) {
         viewModel.initEmployee(firebaseUid)
@@ -83,41 +87,9 @@ fun EmployeeHomeScreen(
         }
     }
     val currentEmployee by viewModel.currentEmployee.collectAsState()
-    var accountBoxExpanded by remember { mutableStateOf(false) }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = MaterialTheme.colorScheme.background,
-                modifier = Modifier.width(280.dp)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize().padding(16.dp),
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text(
-                            text = "Hello, ${currentEmployee?.firstName ?: "Employee"}!",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = menuTitleColor,
-                            modifier = Modifier.padding(top = 16.dp)
-                        )
-                        HorizontalDivider(color = menuTitleColor.copy(alpha = 0.2f))
+    val accountDetails: @Composable () -> Unit = {
 
-                        Text(
-                            text = "Account Details",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = menuTitleColor,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { accountBoxExpanded = !accountBoxExpanded }
-                                .padding(vertical = 8.dp)
-                        )
-
-                        AnimatedVisibility(visible = accountBoxExpanded) {
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                 shape = RoundedCornerShape(8.dp),
@@ -166,47 +138,28 @@ fun EmployeeHomeScreen(
                                     }
                                 }
                             }
-                        }
 
-                    }
+    }
 
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = onLogout,
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = MaterialTheme.colorScheme.onError)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = "Logout", color = MaterialTheme.colorScheme.onError, fontWeight = FontWeight.Bold)
-                        }
-
-                        OutlinedButton(
-                            onClick = onThemeToggle,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, menuTitleColor),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = menuTitleColor)
-                        ) {
-                            Icon(
-                                imageVector = if (isDarkTheme) Icons.Default.WbSunny else Icons.Default.DarkMode,
-                                contentDescription = "Schimbă tema"
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = if (isDarkTheme) "Light Mode" else "Dark Mode", fontWeight = FontWeight.Bold)
-                        }
+    Scaffold(
+            bottomBar = {
+                NavigationBar {
+                    listOf("Appointments" to Icons.Default.Event, "Account" to Icons.Default.Person).forEach { (label, icon) ->
+                        NavigationBarItem(
+                            selected = selectedTab == label,
+                            onClick = { selectedTab = label },
+                            icon = { Icon(icon, null) },
+                            label = { Text(label) }
+                        )
                     }
                 }
-            }
-        }
-
-    ) {
-        Scaffold(
+            },
             topBar = {
                 TopAppBar(
+                    modifier = Modifier.washYourCarHeader(),
                     title = {
-                        Row(
+                        if (selectedTab == "Account") Text("Account", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
+                        else Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
@@ -228,17 +181,14 @@ fun EmployeeHomeScreen(
                             )
                         }
                     },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onPrimary)
-                        }
-                    },
                     actions = {
+                        if (selectedTab == "Appointments") {
                         IconButton(onClick = { viewModel.changeDateByDays(-1) }) {
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Prev", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(32.dp))
                         }
                         IconButton(onClick = { viewModel.changeDateByDays(1) }) {
                             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(32.dp))
+                        }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
@@ -246,7 +196,36 @@ fun EmployeeHomeScreen(
             },
             containerColor = MaterialTheme.colorScheme.background
         ) { paddingValues ->
-            Column(
+            if (selectedTab == "Account") {
+                Column(
+                    Modifier.fillMaxSize().padding(paddingValues).verticalScroll(rememberScrollState()).padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(currentEmployee?.let { "${it.firstName} ${it.lastName}" } ?: "Employee account",
+                        style = MaterialTheme.typography.headlineSmall)
+                    accountDetails()
+                    OutlinedButton(
+                        onClick = onThemeToggle,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
+                    ) {
+                        Icon(if (isDarkTheme) Icons.Default.WbSunny else Icons.Default.DarkMode, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (isDarkTheme) "Light mode" else "Dark mode")
+                    }
+                    Button(
+                        onClick = onLogout,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB3261E), contentColor = Color.White),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Sign out")
+                    }
+                }
+            } else Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
@@ -258,6 +237,7 @@ fun EmployeeHomeScreen(
                     }
                 } else {
                     LazyColumn(
+                        state = appointmentsListState,
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.fillMaxSize().padding(top = 8.dp)
                     ) {
@@ -269,7 +249,6 @@ fun EmployeeHomeScreen(
                                 onDoneClick = { viewModel.markAppointmentAsDone(details.appointment.appointmentId) }
                             )
                         }
-                    }
                 }
             }
         }
