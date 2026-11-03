@@ -1,31 +1,14 @@
 package com.example.washyourcar.ui.screens
 
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.washyourcar.viewmodel.AuthViewModel
@@ -49,238 +32,86 @@ fun LogInOwnerScreen(
         viewModel.clearError()
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp)
-                .shadow(4.dp)
-                .background(MaterialTheme.colorScheme.primary)
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            OwnerGlowingOrb()
+            AuthHeader(isDarkTheme = isDarkTheme, onThemeToggle = onThemeToggle, onBackClick = onBackClick)
+
+            Spacer(modifier = Modifier.height(50.dp))
 
             Text(
-                text = "Wash Your Car!",
-                style = TextStyle(
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontSize = 35.sp,
-                    fontWeight = FontWeight.Bold,
-                    shadow = Shadow(
-                        color = Color.Black.copy(alpha = 0.5f),
-                        offset = Offset(2f, 2f),
-                        blurRadius = 4f
-                    )
-                ),
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .offset(y = 8.dp)
-            )
-
-            IconButton(
-                onClick = onBackClick,
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 16.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Înapoi",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-
-            IconButton(
-                onClick = onThemeToggle,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 16.dp)
-            ) {
-                Icon(
-                    imageVector = if (isDarkTheme) Icons.Default.WbSunny else Icons.Default.DarkMode,
-                    contentDescription = "Schimbă tema",
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-        }
-
-        Spacer(
-            modifier = Modifier
-                .height(2.dp)
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f))
-        )
-        Spacer(modifier = Modifier.height(50.dp))
-
-        Text(
-            text = "Owner Login",
-            style = TextStyle(
+                text = "Owner Login",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.primary
             )
-        )
 
-        Spacer(modifier = Modifier.height(30.dp))
+            Spacer(modifier = Modifier.height(30.dp))
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 50.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            OwnerClearTextField(
-                label = "Email Address",
-                value = email,
-                onValueChange = { email = it }
-            )
-
-            OwnerClearTextField(
-                label = "Password",
-                value = password,
-                onValueChange = { password = it },
-                isPasswordInput = true
-            )
-        }
-
-        val displayError = localErrorMessage ?: authState.errorMessage
-
-        if (displayError != null) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = displayError,
-                color = MaterialTheme.colorScheme.error,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(horizontal = 50.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(40.dp))
-
-        Button(
-            onClick = {
-                if (email.isBlank() || password.isBlank()) {
-                    localErrorMessage = "Please enter both email and password."
-                } else {
-                    localErrorMessage = null
-                    viewModel.login(email, password, onLoginSuccess)
-                }
-            },
-            enabled = !authState.isLoading,
-            modifier = Modifier
-                .fillMaxWidth(0.75f)
-                .height(50.dp)
-                .shadow(6.dp, RoundedCornerShape(18.dp), clip = false)
-                .clip(RoundedCornerShape(18.dp)),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-            contentPadding = PaddingValues()
-        ) {
-            Box(
+            Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.secondary,
-                                MaterialTheme.colorScheme.primary
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(horizontal = 50.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                if (authState.isLoading) {
-                    Text("LOADING...", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                } else {
-                    Text("LOGIN", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                }
+                AuthTextField(
+                    label = "Email Address",
+                    value = email,
+                    onValueChange = { email = it }
+                )
+
+                AuthTextField(
+                    label = "Password",
+                    value = password,
+                    onValueChange = { password = it },
+                    isPasswordInput = true
+                )
             }
+
+            val displayError = localErrorMessage ?: authState.errorMessage
+
+            if (displayError != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = displayError,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(horizontal = 50.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            AuthButton(
+                text = "LOGIN",
+                loadingText = "LOADING...",
+                isLoading = authState.isLoading,
+                onClick = {
+                    if (email.isBlank() || password.isBlank()) {
+                        localErrorMessage = "Please enter both email and password."
+                    } else {
+                        localErrorMessage = null
+                        viewModel.login(email, password, onLoginSuccess)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(0.75f)
+            )
+            Spacer(modifier = Modifier.height(60.dp))
+
+            Text(
+                text = "Don't have an owner account? Sign up",
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .clickable { onNavigateToRegister() }
+                    .padding(bottom = 20.dp)
+            )
         }
-        Spacer(modifier = Modifier.height(60.dp))
-
-        Text(
-            text = "Don't have an owner account? Sign up",
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-            fontSize = 13.sp,
-            modifier = Modifier
-                .clickable { onNavigateToRegister() }
-                .padding(bottom = 20.dp)
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun OwnerClearTextField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    isPasswordInput: Boolean = false,
-    modifier: Modifier = Modifier
-) {
-    var passwordVisible by remember { mutableStateOf(false) }
-
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(60.dp),
-        placeholder = { Text(text = label, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },
-        shape = RoundedCornerShape(16.dp),
-        singleLine = true,
-        visualTransformation = if (isPasswordInput && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
-        trailingIcon = {
-            if (isPasswordInput) {
-                val image = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(imageVector = image, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                }
-            }
-        },
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.secondary,
-            focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            cursorColor = MaterialTheme.colorScheme.primary
-        ),
-        textStyle = TextStyle(fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground)
-    )
-}
-
-@Composable
-fun OwnerGlowingOrb() {
-    val infiniteTransition = rememberInfiniteTransition(label = "particles")
-    val animProgress by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(10000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = "progress"
-    )
-
-    val color1 = MaterialTheme.colorScheme.secondary
-    val color2 = MaterialTheme.colorScheme.tertiary
-
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val w = size.width
-        val h = size.height
-
-        drawCircle(
-            brush = Brush.radialGradient(listOf(color1.copy(alpha = 0.3f), Color.Transparent), center = Offset(w * 0.2f + (animProgress * 100), h * 0.3f), radius = 150f),
-            center = Offset(w * 0.2f + (animProgress * 100), h * 0.3f),
-            radius = 150f
-        )
-        drawCircle(
-            brush = Brush.radialGradient(listOf(color2.copy(alpha = 0.3f), Color.Transparent), center = Offset(w * 0.8f - (animProgress * 150), h * 0.6f), radius = 200f),
-            center = Offset(w * 0.8f - (animProgress * 150), h * 0.6f),
-            radius = 200f
-        )
     }
 }

@@ -5,21 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,91 +61,34 @@ fun RegisterWashDetailsScreen(
         viewModel.clearError()
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .shadow(4.dp)
-                    .background(MaterialTheme.colorScheme.primary)
-            ) {
-                OwnerGlowingOrb()
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            item {
+                AuthHeader(isDarkTheme = isDarkTheme, onThemeToggle = onThemeToggle, onBackClick = onBackClick)
+
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Text(
-                    text = "Wash Your Car!",
-                    style = TextStyle(
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontSize = 35.sp,
-                        fontWeight = FontWeight.Bold,
-                        shadow = Shadow(
-                            color = Color.Black.copy(alpha = 0.5f),
-                            offset = Offset(2f, 2f),
-                            blurRadius = 4f
-                        )
-                    ),
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .offset(y = 8.dp)
+                    text = "Car Wash Details",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary
                 )
 
-                IconButton(
-                    onClick = onBackClick,
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .padding(start = 16.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Înapoi",
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Tell us about your car wash business",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                )
 
-                IconButton(
-                    onClick = onThemeToggle,
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 16.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isDarkTheme) Icons.Default.WbSunny else Icons.Default.DarkMode,
-                        contentDescription = "Schimbă tema",
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
+                Spacer(modifier = Modifier.height(20.dp))
             }
-
-            Spacer(
-                modifier = Modifier
-                    .height(2.dp)
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f))
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Car Wash Details",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Tell us about your car wash business",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-        }
 
         item {
             Column(
@@ -166,10 +98,10 @@ fun RegisterWashDetailsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OwnerClearTextField(label = "Car Wash Name", value = washName, onValueChange = { washName = it })
-                OwnerClearTextField(label = "Address", value = address, onValueChange = { address = it })
-                OwnerClearTextField(label = "City", value = city, onValueChange = { city = it })
-                OwnerClearTextField(label = "Phone Number", value = phone, onValueChange = { phone = it })
+                AuthTextField(label = "Car Wash Name", value = washName, onValueChange = { washName = it })
+                AuthTextField(label = "Address", value = address, onValueChange = { address = it })
+                AuthTextField(label = "City", value = city, onValueChange = { city = it })
+                AuthTextField(label = "Phone Number", value = phone, onValueChange = { phone = it })
 
                 Card(
                     shape = RoundedCornerShape(12.dp),
@@ -192,7 +124,7 @@ fun RegisterWashDetailsScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            OwnerClearTextField(
+                            AuthTextField(
                                 label = "Opens",
                                 value = openHour,
                                 onValueChange = { openHour = it },
@@ -204,8 +136,8 @@ fun RegisterWashDetailsScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
-                            OwnerClearTextField(
-                                label = "Hour",
+                            AuthTextField(
+                                label = "Minute",
                                 value = openMinute,
                                 onValueChange = { openMinute = it },
                                 modifier = Modifier.weight(1f)
@@ -216,7 +148,7 @@ fun RegisterWashDetailsScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            OwnerClearTextField(
+                            AuthTextField(
                                 label = "Closes",
                                 value = closeHour,
                                 onValueChange = { closeHour = it },
@@ -228,8 +160,8 @@ fun RegisterWashDetailsScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
-                            OwnerClearTextField(
-                                label = "Hour",
+                            AuthTextField(
+                                label = "Minute",
                                 value = closeMinute,
                                 onValueChange = { closeMinute = it },
                                 modifier = Modifier.weight(1f)
@@ -306,7 +238,7 @@ fun RegisterWashDetailsScreen(
 
                     if (serviceSelected[service.serviceId] == true) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OwnerClearTextField(
+                            AuthTextField(
                                 label = "Price (RON)",
                                 value = servicePrices[service.serviceId] ?: "",
                                 onValueChange = {
@@ -316,7 +248,7 @@ fun RegisterWashDetailsScreen(
                                 },
                                 modifier = Modifier.weight(1f)
                             )
-                            OwnerClearTextField(
+                            AuthTextField(
                                 label = "Duration (min)",
                                 value = serviceDurations[service.serviceId] ?: "",
                                 onValueChange = {
@@ -349,11 +281,14 @@ fun RegisterWashDetailsScreen(
 
         item {
             Spacer(modifier = Modifier.height(10.dp))
-            Button(
+            AuthButton(
+                text = "SAVE & CONTINUE",
+                loadingText = "SAVING...",
+                isLoading = authState.isLoading,
                 onClick = {
                     if (washName.isBlank() || address.isBlank() || city.isBlank() || phone.isBlank()) {
                         localErrorMessage = "Please fill in all car wash details."
-                        return@Button
+                        return@AuthButton
                     }
 
                     val openH = openHour.toIntOrNull()
@@ -363,17 +298,17 @@ fun RegisterWashDetailsScreen(
 
                     if (openH == null || openM == null || closeH == null || closeM == null) {
                         localErrorMessage = "Please enter valid opening hours."
-                        return@Button
+                        return@AuthButton
                     }
                     if (openH !in 0..23 || openM !in 0..59 || closeH !in 0..23 || closeM !in 0..59) {
                         localErrorMessage = "Hours must be between 00:00 and 23:59."
-                        return@Button
+                        return@AuthButton
                     }
 
                     val selectedServices = availableServices.filter { serviceSelected[it.serviceId] == true }
                     if (selectedServices.isEmpty()) {
                         localErrorMessage = "Please select at least one service."
-                        return@Button
+                        return@AuthButton
                     }
 
                     var hasError = false
@@ -396,7 +331,7 @@ fun RegisterWashDetailsScreen(
                             break
                         }
                     }
-                    if (hasError) return@Button
+                    if (hasError) return@AuthButton
 
                     localErrorMessage = null
 
@@ -423,38 +358,11 @@ fun RegisterWashDetailsScreen(
                         onSuccess = onRegisterSuccess
                     )
                 },
-                enabled = !authState.isLoading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(55.dp)
-                    .padding(horizontal = 40.dp)
-                    .shadow(6.dp, RoundedCornerShape(18.dp), clip = false)
-                    .clip(RoundedCornerShape(18.dp)),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                contentPadding = PaddingValues()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.secondary,
-                                    MaterialTheme.colorScheme.primary
-                                )
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (authState.isLoading) {
-                        Text("SAVING...", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    } else {
-                        Text("SAVE & CONTINUE", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
+                modifier = Modifier.padding(horizontal = 40.dp)
+            )
 
             Spacer(modifier = Modifier.height(40.dp))
+        }
         }
     }
 }
