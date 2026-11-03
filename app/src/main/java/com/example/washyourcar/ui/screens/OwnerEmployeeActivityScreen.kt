@@ -17,7 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.washyourcar.data.entities.AppointmentWithEmployeeName
+import com.example.washyourcar.data.entities.AppointmentWithFullDetails
 import com.example.washyourcar.ui.viewmodel.EmployeeActivityViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -94,43 +94,69 @@ fun OwnerEmployeeActivityScreen(
 }
 
 @Composable
-fun ActivityCard(item: AppointmentWithEmployeeName) {
+fun ActivityCard(item: AppointmentWithFullDetails) {
     val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
     val startTime = timeFormatter.format(Date(item.appointment.startTime))
     val endTime = timeFormatter.format(Date(item.appointment.endTime))
 
-    val statusColor = if (item.appointment.status == "DONE") Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary
+    val statusColor = when (item.appointment.status) {
+        "DONE" -> Color(0xFF4CAF50)
+        "IN_PROGRESS" -> Color(0xFFFF9800)
+        "CANCELED" -> Color(0xFFF44336)
+        else -> MaterialTheme.colorScheme.primary
+    }
+
+    val customerName = if (item.customerFirstName != null || item.customerLastName != null) {
+        "${item.customerFirstName ?: ""} ${item.customerLastName ?: ""}".trim()
+    } else {
+        "Unknown"
+    }
 
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(2.dp),
+        elevation = CardDefaults.cardElevation(4.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = "$startTime - $endTime",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.width(115.dp)
-            )
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "Emp: ${item.employeeName ?: "Unassigned"}", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Text(text = "Car: ${item.appointment.licensePlate}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = "$startTime - $endTime",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Box(
+                    modifier = Modifier.background(statusColor, RoundedCornerShape(8.dp)).padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(item.appointment.status, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                }
             }
 
-            Box(
-                modifier = Modifier.background(statusColor, RoundedCornerShape(8.dp)).padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                Text(item.appointment.status, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(text = "Customer: $customerName", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                if (item.customerPhone != null) {
+                    Text(text = "Phone: ${item.customerPhone}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(text = "Car: ${item.appointment.licensePlate}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(text = "Employee: ${item.employeeName ?: "Unassigned"}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            if (!item.serviceNames.isNullOrEmpty()) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                Text(text = "Services: ${item.serviceNames}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

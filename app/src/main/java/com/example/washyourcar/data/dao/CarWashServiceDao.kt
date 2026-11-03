@@ -43,4 +43,7 @@ interface CarWashServiceDao {
         ORDER BY s.name ASC
     """)
     suspend fun getServiceNamesByIds(serviceIds: List<Int>): List<String>
+
+    @Query("SELECT * FROM services ORDER BY name ASC")
+    suspend fun getAllServices(): List<Service>
 }

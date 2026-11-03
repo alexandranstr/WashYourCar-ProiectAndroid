@@ -63,11 +63,23 @@ fun OwnerHomeScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     val currentOwner by viewModel.currentOwner.collectAsState()
+    val carWash by viewModel.carWash.collectAsState()
     val services by viewModel.services.collectAsState()
 
     LaunchedEffect(firebaseUid) {
         viewModel.initOwner(firebaseUid)
     }
+
+    val openTimeFormatted = carWash?.openTime?.let { time ->
+        val h = time / 100
+        val m = time % 100
+        String.format("%02d:%02d", h, m)
+    } ?: "N/A"
+    val closeTimeFormatted = carWash?.closeTime?.let { time ->
+        val h = time / 100
+        val m = time % 100
+        String.format("%02d:%02d", h, m)
+    } ?: "N/A"
 
     val menuTitleColor = if (isDarkTheme) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
 
@@ -169,11 +181,43 @@ fun OwnerHomeScreen(
                             .padding(24.dp)
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text("Car Wash Details", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
+                            Text(
+                                text = carWash?.name ?: "No Car Wash Yet",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
                             Spacer(modifier = Modifier.height(4.dp))
 
-                            Text(text = "City: Galati", fontSize = 14.sp, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f))
-                            Text(text = "Open: 08:00 - 22:00", fontSize = 14.sp, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f))
+                            if (carWash != null) {
+                                Text(
+                                    text = "Address: ${carWash!!.address}, ${carWash!!.city}",
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
+                                )
+                                Text(
+                                    text = "Phone: ${carWash!!.phoneNumber}",
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
+                                )
+                                Text(
+                                    text = "Open: $openTimeFormatted - $closeTimeFormatted",
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
+                                )
+                                Text(
+                                    text = "Access Code: ${carWash!!.accessCode}",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
+                                )
+                            } else {
+                                Text(
+                                    text = "Complete your car wash setup to see details here.",
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
+                                )
+                            }
 
                             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.4f))
 

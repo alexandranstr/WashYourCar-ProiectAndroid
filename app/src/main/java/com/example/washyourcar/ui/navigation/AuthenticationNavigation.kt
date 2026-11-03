@@ -42,6 +42,7 @@ sealed class Screen(val route: String) {
 
     object LoginOwner : Screen("login_owner")
     object RegisterOwner : Screen("register_owner")
+    object RegisterWashDetails : Screen("register_wash_details")
     object OwnerHome : Screen("owner_home")
     object EmployeeActivity : Screen("employee_activity")
     object CarWashMonitoring : Screen("car_wash_monitoring")
@@ -162,9 +163,32 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                     isDarkTheme = isDarkTheme,
                     onThemeToggle = { isDarkTheme = !isDarkTheme },
                     onRegisterSuccess = {
-                        navController.navigate(Screen.OwnerHome.route) { popUpTo(Screen.RoleSelection.route) { inclusive = true } }
+                        navController.navigate(Screen.RegisterWashDetails.route) { popUpTo(Screen.RegisterOwner.route) { inclusive = true } }
                     },
                     onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            composable(Screen.RegisterWashDetails.route) {
+                var availableServices by remember { mutableStateOf<List<com.example.washyourcar.data.entities.Service>>(emptyList()) }
+
+                LaunchedEffect(Unit) {
+                    try {
+                        availableServices = database.carWashServiceDao().getAllServices()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+
+                RegisterWashDetailsScreen(
+                    viewModel = authViewModel,
+                    isDarkTheme = isDarkTheme,
+                    onThemeToggle = { isDarkTheme = !isDarkTheme },
+                    onRegisterSuccess = {
+                        navController.navigate(Screen.OwnerHome.route) { popUpTo(Screen.RegisterWashDetails.route) { inclusive = true } }
+                    },
+                    onBackClick = { navController.popBackStack() },
+                    availableServices = availableServices
                 )
             }
 
@@ -177,7 +201,8 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                         override fun <T : ViewModel> create(modelClass: Class<T>): T {
                             return com.example.washyourcar.ui.viewmodel.OwnerHomeViewModel(
                                 ownerDao = database.ownerDao(),
-                                carWashServiceDao = database.carWashServiceDao()
+                                carWashServiceDao = database.carWashServiceDao(),
+                                carWashDao = database.carWashDao()
                             ) as T
                         }
                     }
@@ -200,16 +225,23 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
             }
 
             composable(Screen.EmployeeActivity.route) {
+                val currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
                 val activityViewModel: com.example.washyourcar.ui.viewmodel.EmployeeActivityViewModel = viewModel(
                     factory = object : ViewModelProvider.Factory {
                         @Suppress("UNCHECKED_CAST")
                         override fun <T : ViewModel> create(modelClass: Class<T>): T {
                             return com.example.washyourcar.ui.viewmodel.EmployeeActivityViewModel(
-                                appointmentDao = database.appointmentDao()
+                                appointmentDao = database.appointmentDao(),
+                                carWashDao = database.carWashDao()
                             ) as T
                         }
                     }
                 )
+
+                LaunchedEffect(currentUid) {
+                    activityViewModel.initOwner(currentUid)
+                }
 
                 OwnerEmployeeActivityScreen(
                     onBack = { navController.popBackStack() },
@@ -219,16 +251,23 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
             }
 
             composable(Screen.CarWashMonitoring.route) {
+                val currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
                 val monitoringViewModel: com.example.washyourcar.ui.viewmodel.CarWashMonitoringViewModel = viewModel(
                     factory = object : ViewModelProvider.Factory {
                         @Suppress("UNCHECKED_CAST")
                         override fun <T : ViewModel> create(modelClass: Class<T>): T {
                             return com.example.washyourcar.ui.viewmodel.CarWashMonitoringViewModel(
-                                carWashServiceDao = database.carWashServiceDao()
+                                carWashServiceDao = database.carWashServiceDao(),
+                                carWashDao = database.carWashDao()
                             ) as T
                         }
                     }
                 )
+
+                LaunchedEffect(currentUid) {
+                    monitoringViewModel.initOwner(currentUid)
+                }
 
                 OwnerCarWashMonitoringScreen(
                     onBack = { navController.popBackStack() },

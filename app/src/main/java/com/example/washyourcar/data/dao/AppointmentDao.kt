@@ -7,6 +7,7 @@ import androidx.room.Query
 import com.example.washyourcar.data.entities.Appointment
 import com.example.washyourcar.data.entities.AppointmentWithDetails
 import com.example.washyourcar.data.entities.AppointmentWithEmployeeName
+import com.example.washyourcar.data.entities.AppointmentWithFullDetails
 
 @Dao
 interface AppointmentDao {
@@ -71,4 +72,24 @@ interface AppointmentDao {
         WHERE status IN ('CONFIRMED', 'IN_PROGRESS')
     """)
     suspend fun updateAutomaticStatuses(currentTime: Long)
+
+    @Query("""
+        SELECT a.*, 
+               (e.firstName || ' ' || e.lastName) AS employeeName,
+               c.firstName AS customerFirstName,
+               c.lastName AS customerLastName,
+               c.phoneNumber AS customerPhone,
+               (SELECT GROUP_CONCAT(s.name, ', ') 
+                FROM services s 
+                WHERE ',' || a.serviceIds || ',' LIKE '%,' || CAST(s.serviceId AS TEXT) || ',%'
+               ) AS serviceNames
+        FROM appointments a
+        LEFT JOIN employees e ON a.employeeId = e.firebaseUid
+        LEFT JOIN customers c ON a.customerId = c.firebaseUid
+        WHERE a.carWashId = :carWashId
+        AND a.startTime >= :startOfDay
+        AND a.startTime <= :endOfDay
+        ORDER BY a.startTime ASC
+    """)
+    suspend fun getAppointmentsWithFullDetailsByDay(carWashId: Int, startOfDay: Long, endOfDay: Long): List<AppointmentWithFullDetails>
 }

@@ -219,14 +219,15 @@ fun OwnerClearTextField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
-    isPasswordInput: Boolean = false
+    isPasswordInput: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(60.dp),
         placeholder = { Text(text = label, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)) },

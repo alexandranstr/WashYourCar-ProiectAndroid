@@ -2,6 +2,7 @@ package com.example.washyourcar.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.washyourcar.data.dao.CarWashDao
 import com.example.washyourcar.data.dao.CarWashServiceDao
 import com.example.washyourcar.data.entities.CarWashService
 import com.example.washyourcar.data.entities.CarWashServiceDetails
@@ -12,7 +13,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class CarWashMonitoringViewModel(
-    private val carWashServiceDao: CarWashServiceDao
+    private val carWashServiceDao: CarWashServiceDao,
+    private val carWashDao: CarWashDao
 ) : ViewModel() {
 
     private val _activeServices = MutableStateFlow<List<CarWashServiceDetails>>(emptyList())
@@ -21,13 +23,20 @@ class CarWashMonitoringViewModel(
     private val _availableServices = MutableStateFlow<List<Service>>(emptyList())
     val availableServices: StateFlow<List<Service>> = _availableServices.asStateFlow()
 
-    private val currentCarWashId = 1
+    private var currentCarWashId: Int = -1
 
-    init {
-        loadServices()
+    fun initOwner(firebaseUid: String) {
+        viewModelScope.launch {
+            val carWash = carWashDao.getCarWashByOwnerId(firebaseUid)
+            if (carWash != null) {
+                currentCarWashId = carWash.carWashId
+                loadServices()
+            }
+        }
     }
 
     private fun loadServices() {
+        if (currentCarWashId == -1) return
         viewModelScope.launch {
             _activeServices.value = carWashServiceDao.getServicesByCarWashId(currentCarWashId)
             _availableServices.value = carWashServiceDao.getUnassociatedServices(currentCarWashId)
