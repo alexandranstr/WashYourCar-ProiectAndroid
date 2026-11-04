@@ -8,6 +8,7 @@ import com.example.washyourcar.data.entities.Appointment
 import com.example.washyourcar.data.entities.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.*
 import com.example.washyourcar.models.*
@@ -18,7 +19,9 @@ class CarWashDetailViewModel(
     private val carWashDao: CarWashDao,
     private val appointmentDao: AppointmentDao,
     private val carDao: com.example.washyourcar.data.dao.CarDao,
-    private val carWashServiceDao: com.example.washyourcar.data.dao.CarWashServiceDao
+    private val carWashServiceDao: com.example.washyourcar.data.dao.CarWashServiceDao,
+    private val reviewDao: ReviewDao,
+    private val customerDao: com.example.washyourcar.data.dao.CustomerDao
 ) : ViewModel() {
 
     private val _carWash = MutableStateFlow<CarWash?>(null)
@@ -43,6 +46,18 @@ class CarWashDetailViewModel(
     private val _availableServices = MutableStateFlow<List<CarWashServiceDetails>>(emptyList())
     val availableServices: StateFlow<List<CarWashServiceDetails>> = _availableServices
 
+    private val _reviews = MutableStateFlow<List<Review>>(emptyList())
+    val reviews: StateFlow<List<Review>> = _reviews
+
+    private val _computedRating = MutableStateFlow<Float?>(null)
+    val computedRating: StateFlow<Float?> = _computedRating
+
+    private val _reviewCount = MutableStateFlow(0)
+    val reviewCount: StateFlow<Int> = _reviewCount
+
+    private val _customerExistingReview = MutableStateFlow<Review?>(null)
+    val customerExistingReview: StateFlow<Review?> = _customerExistingReview
+
     fun loadCarWashDetails(carWashId: Int, customerUid: String) {
         viewModelScope.launch {
             _carWash.value = carWashDao.getCarWashById(carWashId)
@@ -60,6 +75,49 @@ class CarWashDetailViewModel(
                 e.printStackTrace()
                 _randomTip.value = WashTips(0, "Wash Tip", "Keep your car clean for a shiny day!")
             }
+
+            loadReviews(carWashId, customerUid)
+        }
+    }
+
+    private fun loadReviews(carWashId: Int, customerUid: String) {
+        viewModelScope.launch {
+            _reviews.value = reviewDao.getReviewsByCarWashIdOnce(carWashId)
+            _reviewCount.value = reviewDao.getReviewCount(carWashId)
+            _computedRating.value = reviewDao.getAverageRating(carWashId)
+            _customerExistingReview.value = reviewDao.getCustomerReviewForCarWash(carWashId, customerUid)
+        }
+    }
+
+    fun submitReview(carWashId: Int, customerId: String, rating: Int, comment: String) {
+        viewModelScope.launch {
+            val customerName = customerDao.getCustomerFullName(customerId) ?: "Anonymous"
+            val existingReview = reviewDao.getCustomerReviewForCarWash(carWashId, customerId)
+
+            val review = if (existingReview != null) {
+                Review(
+                    reviewId = existingReview.reviewId,
+                    carWashId = carWashId,
+                    customerId = customerId,
+                    customerName = customerName,
+                    rating = rating,
+                    comment = comment,
+                    timestamp = System.currentTimeMillis()
+                )
+            } else {
+                Review(
+                    reviewId = UUID.randomUUID().toString(),
+                    carWashId = carWashId,
+                    customerId = customerId,
+                    customerName = customerName,
+                    rating = rating,
+                    comment = comment,
+                    timestamp = System.currentTimeMillis()
+                )
+            }
+
+            reviewDao.insertReview(review)
+            loadReviews(carWashId, customerId)
         }
     }
 

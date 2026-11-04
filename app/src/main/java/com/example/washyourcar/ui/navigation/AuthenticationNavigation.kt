@@ -202,7 +202,8 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                             return com.example.washyourcar.ui.viewmodel.OwnerHomeViewModel(
                                 ownerDao = database.ownerDao(),
                                 carWashServiceDao = database.carWashServiceDao(),
-                                carWashDao = database.carWashDao()
+                                carWashDao = database.carWashDao(),
+                                reviewDao = database.reviewDao()
                             ) as T
                         }
                     }
@@ -376,7 +377,9 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                                 carWashDao = database.carWashDao(),
                                 appointmentDao = database.appointmentDao(),
                                 carDao = database.carDao(),
-                                carWashServiceDao = database.carWashServiceDao()
+                                carWashServiceDao = database.carWashServiceDao(),
+                                reviewDao = database.reviewDao(),
+                                customerDao = database.customerDao()
                             ) as T
                         }
                     }

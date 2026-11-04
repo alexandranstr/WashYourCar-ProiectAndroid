@@ -5,27 +5,39 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Call
+import androidx.compose.material.icons.outlined.CarRental
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.washyourcar.data.entities.CarWash
 import com.example.washyourcar.ui.viewmodel.ClientHomeViewModel
@@ -56,6 +68,7 @@ fun HomeScreen(
     val customerCar by viewModel.customerCar.collectAsState()
     val activeAppointment by viewModel.activeAppointment.collectAsState()
     val allServiceNames by viewModel.allServiceNames.collectAsState()
+    val carWashRatings by viewModel.carWashRatings.collectAsState()
     var filterBoxVisible by remember { mutableStateOf(false) }
     var showCancelConfirmationDialog by remember { mutableStateOf(false) }
 
@@ -63,6 +76,13 @@ fun HomeScreen(
         if (firebaseUid.isNotEmpty()) {
             viewModel.loadCustomerData(firebaseUid)
             viewModel.loadActiveAppointment(firebaseUid)
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.refreshRatings()
         }
     }
 
@@ -266,21 +286,25 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                     )
-                    Row(
+                    val citiesListState = rememberLazyListState()
+                    LazyRow(
+                        state = citiesListState,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(horizontal = 4.dp)
                     ) {
-                        FilterChip(
-                            selected = selectedCity == null,
-                            onClick = { viewModel.loadAllCarWashes() },
-                            label = { Text("All Cities") },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                        item {
+                            FilterChip(
+                                selected = selectedCity == null,
+                                onClick = { viewModel.loadAllCarWashes() },
+                                label = { Text("All Cities") },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                )
                             )
-                        )
-
-                        cities.forEach { city ->
+                        }
+                        items(cities) { city ->
                             FilterChip(
                                 selected = selectedCity == city,
                                 onClick = { viewModel.selectCity(city) },
@@ -320,7 +344,7 @@ fun HomeScreen(
                         enabled = true
                     ) {
                         Icon(
-                            Icons.Default.Settings,
+                            Icons.Default.FilterList,
                             contentDescription = "Filters",
                             tint = if (selectedFilters.isNotEmpty()) Color(0xFFFFB300) else MaterialTheme.colorScheme.primary
                         )
@@ -364,11 +388,31 @@ fun HomeScreen(
                 }
 
                 if (carWashes.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp),
+                            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "No car washes matched your criteria.",
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                            fontSize = 15.sp
+                            text = "No car washes found",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Try adjusting your filters or search query",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
                         )
                     }
                 } else {
@@ -377,7 +421,15 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(carWashes) { wash ->
-                            CarWashCard(carWash = wash, onClick = { onCarWashClick(wash.carWashId) })
+                            val ratingInfo = carWashRatings[wash.carWashId]
+                            val displayRating = ratingInfo?.first
+                            val displayReviewCount = ratingInfo?.second ?: 0
+                            CarWashCard(
+                                carWash = wash,
+                                rating = displayRating,
+                                reviewCount = displayReviewCount,
+                                onClick = { onCarWashClick(wash.carWashId) }
+                            )
                         }
                     }
                 }
@@ -387,7 +439,7 @@ fun HomeScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CarWashCard(carWash: CarWash, onClick: () -> Unit) {
+fun CarWashCard(carWash: CarWash, rating: Float?, reviewCount: Int, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(18.dp),
@@ -419,17 +471,38 @@ fun CarWashCard(carWash: CarWash, onClick: () -> Unit) {
                         text = carWash.name,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
                     )
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        val starsCount = carWash.rating.toInt()
-                        repeat(starsCount) {
-                            Text("★", color = Color(0xFFFFB300), fontSize = 14.sp)
+                    if (rating != null && reviewCount > 0) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(1.dp), verticalAlignment = Alignment.CenterVertically) {
+                            val starsCount = rating.toInt()
+                            repeat(starsCount) {
+                                Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(16.dp))
+                            }
+                            repeat(5 - starsCount) {
+                                Icon(Icons.Default.StarBorder, contentDescription = null, tint = Color(0xFFFFB300).copy(alpha = 0.4f), modifier = Modifier.size(16.dp))
+                            }
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = String.format("%.1f", rating),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = " ($reviewCount)",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
                         }
-                        repeat(5 - starsCount) {
-                            Text("☆", color = Color(0xFFFFB300), fontSize = 14.sp)
-                        }
+                    } else {
+                        Text(
+                            text = "No reviews",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
                     }
                 }
 

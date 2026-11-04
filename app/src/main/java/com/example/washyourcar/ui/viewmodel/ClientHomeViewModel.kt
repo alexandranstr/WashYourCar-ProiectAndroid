@@ -25,6 +25,7 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
     private val carDao = database.carDao()
     private val appointmentDao = database.appointmentDao()
     private val carWashServiceDao = database.carWashServiceDao()
+    private val reviewDao = database.reviewDao()
 
     private val _carWashes = MutableStateFlow<List<CarWash>>(emptyList())
     val carWashes: StateFlow<List<CarWash>> = _carWashes.asStateFlow()
@@ -44,6 +45,9 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
     private val _allServiceNames = MutableStateFlow<List<String>>(emptyList())
     val allServiceNames: StateFlow<List<String>> = _allServiceNames.asStateFlow()
 
+    private val _carWashRatings = MutableStateFlow<Map<Int, Pair<Float, Int>>>(emptyMap())
+    val carWashRatings: StateFlow<Map<Int, Pair<Float, Int>>> = _carWashRatings.asStateFlow()
+
     private val _currentCustomer = MutableStateFlow<Customer?>(null)
     val currentCustomer: StateFlow<Customer?> = _currentCustomer.asStateFlow()
 
@@ -57,6 +61,20 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
         loadCities()
         loadAllCarWashes()
         loadAllServices()
+    }
+
+    fun loadCarWashRatings(carWashIds: List<Int>) {
+        viewModelScope.launch {
+            val ratingsMap = mutableMapOf<Int, Pair<Float, Int>>()
+            for (id in carWashIds) {
+                val avgRating = reviewDao.getAverageRating(id)
+                val count = reviewDao.getReviewCount(id)
+                if (avgRating != null && count > 0) {
+                    ratingsMap[id] = avgRating to count
+                }
+            }
+            _carWashRatings.value = ratingsMap
+        }
     }
 
     private fun loadAllServices() {
@@ -119,6 +137,7 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             _selectedCity.value = null
             _carWashes.value = carWashDao.getAllCarWashes()
+            loadCarWashRatings(_carWashes.value.map { it.carWashId })
         }
     }
 
@@ -128,6 +147,7 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
             _searchQuery.value = ""
             _selectedFilters.value = emptySet()
             _carWashes.value = carWashDao.getCarWashesByCity(city)
+            loadCarWashRatings(_carWashes.value.map { it.carWashId })
         }
     }
 
@@ -171,6 +191,7 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
                     _carWashes.value = carWashDao.getCarWashesByCity(city)
                 }
             }
+            loadCarWashRatings(_carWashes.value.map { it.carWashId })
         }
     }
 
@@ -185,6 +206,13 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             appointmentDao.updateStatus(appointmentId, "CANCELED")
             loadActiveAppointment(customerId)
+        }
+    }
+
+    fun refreshRatings() {
+        val currentCarWashIds = _carWashes.value.map { it.carWashId }
+        if (currentCarWashIds.isNotEmpty()) {
+            loadCarWashRatings(currentCarWashIds)
         }
     }
 }
