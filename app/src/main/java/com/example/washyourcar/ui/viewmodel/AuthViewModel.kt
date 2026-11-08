@@ -5,12 +5,18 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.washyourcar.data.entities.AutoWash
+import com.example.washyourcar.data.entities.AutoWashService
 import com.example.washyourcar.data.entities.Car
 import com.example.washyourcar.data.entities.CarWash
 import com.example.washyourcar.data.entities.CarWashService
 import com.example.washyourcar.data.entities.Customer
 import com.example.washyourcar.data.entities.Employee
 import com.example.washyourcar.data.entities.Owner
+import com.example.washyourcar.data.entities.SelfWash
+import com.example.washyourcar.data.entities.SelfWashService
+import com.example.washyourcar.data.entities.WashType
+import com.example.washyourcar.models.ServiceOption
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,15 +30,22 @@ data class AuthState(
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val database = AppDatabase.getDatabase(application)
 
-    private val customerDao = AppDatabase.getDatabase(application).customerDao()
-    private val carDao = AppDatabase.getDatabase(application).carDao()
-    private val ownerDao = AppDatabase.getDatabase(application).ownerDao()
-    private val carWashDao = AppDatabase.getDatabase(application).carWashDao()
+    private val customerDao = database.customerDao()
+    private val carDao = database.carDao()
+    private val ownerDao = database.ownerDao()
+    private val employeeDao = database.employeeDao()
+
+    private val carWashDao = database.carWashDao()
+    private val autoWashDao = database.autoWashDao()
+    private val selfWashDao = database.selfWashDao()
+
+    private val carWashServiceDao = database.carWashServiceDao()
+    private val autoWashServiceDao = database.autoWashServiceDao()
+    private val selfWashServiceDao = database.selfWashServiceDao()
+
     private val _authState = MutableStateFlow(AuthState())
-
-    private val employeeDao = AppDatabase.getDatabase(application).employeeDao()
-    private val carWashServiceDao = AppDatabase.getDatabase(application).carWashServiceDao()
     val authState: StateFlow<AuthState> = _authState
 
     val isLoggedIn: Boolean
@@ -157,28 +170,32 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             }
     }
 
-    fun registerWashDetails(
+    suspend fun getServiceOptions(type: WashType): List<ServiceOption> = when (type) {
+        WashType.NORMAL -> carWashServiceDao.getAllServices()
+            .map { ServiceOption(it.serviceId, it.name, it.description) }
+        WashType.AUTOMATIC -> autoWashServiceDao.getAllServices()
+            .map { ServiceOption(it.autoServiceId, it.name, it.description) }
+        WashType.SELF -> selfWashServiceDao.getAllServices()
+            .map { ServiceOption(it.selfServiceId, it.name, it.description) }
+    }
+
+    fun registerWashBasics(
+        washType: WashType,
         washName: String,
         address: String,
         city: String,
         phone: String,
         openTime: Long,
         closeTime: Long,
-        serviceData: List<Triple<Int, Float, Int>>,
-        onAccessCodeGenerated: (String) -> Unit,
-        onSuccess: () -> Unit
+        normalBays: Int,
+        premiumBays: Int,
+        automaticBays: Int,
+        onSuccess: (washId: Int) -> Unit
     ) {
         if (washName.isBlank() || address.isBlank() || city.isBlank() || phone.isBlank()) {
             _authState.value = AuthState(errorMessage = "Please fill in all fields.")
             return
         }
-
-        if (serviceData.isEmpty()) {
-            _authState.value = AuthState(errorMessage = "Please select at least one service.")
-            return
-        }
-
-        _authState.value = AuthState(isLoading = true)
 
         val firebaseUid = auth.currentUser?.uid
         if (firebaseUid == null) {
@@ -186,62 +203,131 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
+        _authState.value = AuthState(isLoading = true)
+
         viewModelScope.launch {
             try {
-                val accessCode = generateUniqueAccessCode(carWashDao)
-                Log.d("Auth", "Generated access code: $accessCode")
+                val newId = when (washType) {
+                    WashType.NORMAL -> {
+                        val accessCode = generateUniqueAccessCode()
+                        Log.d("Auth", "Generated access code: $accessCode")
 
-                val allCarWashes = carWashDao.getAllCarWashes()
-                val newCarWashId = if (allCarWashes.isEmpty()) 200 else allCarWashes.maxOf { it.carWashId } + 1
+                        val id = (carWashDao.getAllCarWashes().maxOfOrNull { it.carWashId } ?: 199) + 1
+                        carWashDao.insertAndReturnId(
+                            CarWash(
+                                carWashId = id,
+                                ownerId = firebaseUid,
+                                name = washName,
+                                address = address,
+                                city = city,
+                                phoneNumber = phone,
+                                rating = 0f,
+                                accessCode = accessCode,
+                                openTime = openTime,
+                                closeTime = closeTime
+                            )
+                        )
+                        id
+                    }
 
-                val carWash = CarWash(
-                    carWashId = newCarWashId,
-                    ownerId = firebaseUid,
-                    name = washName,
-                    address = address,
-                    city = city,
-                    phoneNumber = phone,
-                    rating = 0f,
-                    accessCode = accessCode,
-                    openTime = openTime,
-                    closeTime = closeTime
-                )
+                    WashType.AUTOMATIC -> {
+                        val id = (autoWashDao.getAllAutoWashes().maxOfOrNull { it.autoWashId } ?: 199) + 1
+                        autoWashDao.insertAndReturnId(
+                            AutoWash(
+                                autoWashId = id,
+                                ownerId = firebaseUid,
+                                name = washName,
+                                address = address,
+                                city = city,
+                                phoneNumber = phone,
+                                rating = 0f,
+                                openTime = openTime,
+                                closeTime = closeTime,
+                                automaticBays = automaticBays
+                            )
+                        )
+                        id
+                    }
 
-                carWashDao.insertAndReturnId(carWash)
-                Log.d("Room", "CarWash saved with id $newCarWashId")
-
-                serviceData.forEach { (serviceId, price, duration) ->
-                    val carWashService = CarWashService(
-                        carWashId = newCarWashId,
-                        serviceId = serviceId,
-                        price = price,
-                        duration = duration
-                    )
-                    carWashServiceDao.insert(carWashService)
-                    Log.d("Room", "Service $serviceId linked to carWash $newCarWashId")
+                    WashType.SELF -> {
+                        val id = (selfWashDao.getAllSelfWashes().maxOfOrNull { it.selfWashId } ?: 199) + 1
+                        selfWashDao.insertAndReturnId(
+                            SelfWash(
+                                selfWashId = id,
+                                ownerId = firebaseUid,
+                                name = washName,
+                                address = address,
+                                city = city,
+                                phoneNumber = phone,
+                                rating = 0f,
+                                openTime = openTime,
+                                closeTime = closeTime,
+                                premiumSelfWashBays = premiumBays,
+                                normalSelfWashBays = normalBays
+                            )
+                        )
+                        id
+                    }
                 }
 
-                onAccessCodeGenerated(accessCode)
-
+                Log.d("Room", "${washType.name} wash saved with id $newId")
                 _authState.value = AuthState()
-                onSuccess()
+                onSuccess(newId)
             } catch (e: Exception) {
-                Log.e("Room", "Error saving car wash: ${e.message}")
+                Log.e("Room", "Error saving wash: ${e.message}")
                 _authState.value = AuthState(errorMessage = "Database failed: ${e.localizedMessage}")
             }
         }
     }
 
-    private fun generateUniqueAccessCode(carWashDao: com.example.washyourcar.data.dao.CarWashDao): String {
+    fun saveWashServices(
+        washType: WashType,
+        washId: Int,
+        serviceData: List<Triple<Int, Float, Int>>,
+        onSuccess: () -> Unit
+    ) {
+        if (serviceData.isEmpty()) {
+            _authState.value = AuthState(errorMessage = "Please select at least one service.")
+            return
+        }
+
+        _authState.value = AuthState(isLoading = true)
+
+        viewModelScope.launch {
+            try {
+                serviceData.forEach { (serviceId, price, duration) ->
+                    when (washType) {
+                        WashType.NORMAL -> carWashServiceDao.insert(
+                            CarWashService(carWashId = washId, serviceId = serviceId, price = price, duration = duration)
+                        )
+                        WashType.AUTOMATIC -> autoWashServiceDao.insert(
+                            AutoWashService(autoWashId = washId, autoServiceId = serviceId, price = price, duration = duration)
+                        )
+                        WashType.SELF -> selfWashServiceDao.insert(
+                            SelfWashService(selfWashId = washId, selfServiceId = serviceId, price = price, duration = duration)
+                        )
+                    }
+                    Log.d("Room", "Service $serviceId linked to ${washType.name} wash $washId")
+                }
+
+                _authState.value = AuthState()
+                onSuccess()
+            } catch (e: Exception) {
+                Log.e("Room", "Error saving services: ${e.message}")
+                _authState.value = AuthState(errorMessage = "Database failed: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    private suspend fun generateUniqueAccessCode(): String {
         val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
         var code: String
-        kotlinx.coroutines.runBlocking {
-            do {
-                code = (1..6).map { chars.random() }.joinToString("")
-            } while (carWashDao.doesAccessCodeExist(code))
-        }
+        do {
+            code = (1..6).map { chars.random() }.joinToString("")
+        } while (carWashDao.doesAccessCodeExist(code))
         return code
     }
+
     fun register(
         nume: String,
         prenume: String,

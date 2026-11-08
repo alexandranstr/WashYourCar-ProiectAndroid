@@ -22,6 +22,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.washyourcar.data.entities.WashType
 import com.example.washyourcar.ui.screens.CarWashDetailScreen
 import com.example.washyourcar.ui.screens.EmployeeHomeScreen
 import com.example.washyourcar.ui.screens.HomeScreen
@@ -37,6 +38,7 @@ import com.example.washyourcar.ui.screens.RegisterClientScreen
 import com.example.washyourcar.ui.screens.RegisterEmployeeScreen
 import com.example.washyourcar.ui.screens.RegisterOwnerScreen
 import com.example.washyourcar.ui.screens.RegisterWashDetailsScreen
+import com.example.washyourcar.ui.screens.RegisterWashServicesScreen
 import com.example.washyourcar.ui.screens.RoleSelectionScreen
 import com.example.washyourcar.ui.theme.WashYourCarTheme
 import com.example.washyourcar.ui.viewmodel.CarWashDetailViewModel
@@ -181,25 +183,41 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
             }
 
             composable(Screen.RegisterWashDetails.route) {
-                var availableServices by remember { mutableStateOf<List<com.example.washyourcar.data.entities.Service>>(emptyList()) }
-
-                LaunchedEffect(Unit) {
-                    try {
-                        availableServices = database.carWashServiceDao().getAllServices()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }
-
                 RegisterWashDetailsScreen(
                     viewModel = authViewModel,
                     isDarkTheme = isDarkTheme,
                     onThemeToggle = { isDarkTheme = !isDarkTheme },
-                    onRegisterSuccess = {
-                        navController.navigate(Screen.OwnerHome.route) { popUpTo(Screen.RegisterWashDetails.route) { inclusive = true } }
+                    onContinue = { type, washId ->
+                        navController.navigate("register_wash_services/${type.name}/$washId")
                     },
-                    onBackClick = { navController.popBackStack() },
-                    availableServices = availableServices
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = "register_wash_services/{washType}/{washId}",
+                arguments = listOf(
+                    navArgument("washType") { type = NavType.StringType },
+                    navArgument("washId") { type = NavType.IntType }
+                )
+            ) { backStackEntry ->
+                val washType = WashType.valueOf(
+                    backStackEntry.arguments?.getString("washType") ?: WashType.NORMAL.name
+                )
+                val washId = backStackEntry.arguments?.getInt("washId") ?: 0
+
+                RegisterWashServicesScreen(
+                    viewModel = authViewModel,
+                    washType = washType,
+                    washId = washId,
+                    isDarkTheme = isDarkTheme,
+                    onThemeToggle = { isDarkTheme = !isDarkTheme },
+                    onRegisterSuccess = {
+                        navController.navigate(Screen.OwnerHome.route) {
+                            popUpTo(Screen.RegisterWashDetails.route) { inclusive = true }
+                        }
+                    },
+                    onBackClick = { navController.popBackStack() }
                 )
             }
 
@@ -212,8 +230,12 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                         override fun <T : ViewModel> create(modelClass: Class<T>): T {
                             return com.example.washyourcar.ui.viewmodel.OwnerHomeViewModel(
                                 ownerDao = database.ownerDao(),
-                                carWashServiceDao = database.carWashServiceDao(),
                                 carWashDao = database.carWashDao(),
+                                autoWashDao = database.autoWashDao(),
+                                selfWashDao = database.selfWashDao(),
+                                carWashServiceDao = database.carWashServiceDao(),
+                                autoWashServiceDao = database.autoWashServiceDao(),
+                                selfWashServiceDao = database.selfWashServiceDao(),
                                 reviewDao = database.reviewDao()
                             ) as T
                         }
@@ -322,7 +344,7 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                         authViewModel.logout()
                         navController.navigate(Screen.RoleSelection.route) { popUpTo(Screen.Home.route) { inclusive = true } }
                     },
-                    onCarWashClick = { carWashId -> navController.navigate("car_wash_detail/$carWashId") }
+                    onWashClick = { _, id -> navController.navigate("car_wash_detail/$id") }
                 )
             }
 

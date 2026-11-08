@@ -12,8 +12,8 @@ data class SelfWash(
     val city: String,
     val phoneNumber: String,
     val rating: Float,
-    val accessCode: String,
     val openTime: Long,
     val closeTime: Long,
-    val premiumSelfWashBays: Int
+    val normalSelfWashBays: Int,
+    val premiumSelfWashBays: Int = 0
 )

@@ -1,6 +1,8 @@
 package com.example.washyourcar.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,7 +10,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.DarkMode
@@ -19,19 +23,15 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Call
-import androidx.compose.material.icons.outlined.CarRental
-import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,7 +39,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.washyourcar.data.entities.CarWash
+import com.example.washyourcar.R
+import com.example.washyourcar.data.entities.WashType
+import com.example.washyourcar.models.WashListItem
 import com.example.washyourcar.ui.viewmodel.ClientHomeViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -52,22 +54,21 @@ fun HomeScreen(
     isDarkTheme: Boolean,
     onThemeToggle: () -> Unit,
     onLogout: () -> Unit,
-    onCarWashClick: (Int) -> Unit,
+    onWashClick: (WashType, Int) -> Unit,
     viewModel: ClientHomeViewModel = viewModel()
 ) {
     var selectedTab by rememberSaveable { mutableStateOf("Explore") }
-    val carWashes by viewModel.carWashes.collectAsState()
+    val washes by viewModel.washes.collectAsState()
     val cities by viewModel.cities.collectAsState()
     val selectedCity by viewModel.selectedCity.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
-    val selectedFilters by viewModel.selectedFilters.collectAsState()
+    val selectedTypes by viewModel.selectedTypes.collectAsState()
     val profileLoading by viewModel.profileLoading.collectAsState()
     val profileMessage by viewModel.profileMessage.collectAsState()
     val signedInEmail by viewModel.signedInEmail.collectAsState()
     val currentCustomer by viewModel.currentCustomer.collectAsState()
     val customerCar by viewModel.customerCar.collectAsState()
     val activeAppointment by viewModel.activeAppointment.collectAsState()
-    val allServiceNames by viewModel.allServiceNames.collectAsState()
     val carWashRatings by viewModel.carWashRatings.collectAsState()
     var filterBoxVisible by remember { mutableStateOf(false) }
     var showCancelConfirmationDialog by remember { mutableStateOf(false) }
@@ -112,169 +113,207 @@ fun HomeScreen(
     }
 
     Scaffold(
-            bottomBar = {
-                NavigationBar {
-                    listOf("Explore" to Icons.Default.Search, "Appointments" to Icons.Default.Event, "Account" to Icons.Default.Person).forEach { (label, icon) ->
-                        NavigationBarItem(selected = selectedTab == label, onClick = { selectedTab = label; if (label == "Account") viewModel.loadCustomerData(firebaseUid); if (label == "Appointments") viewModel.loadActiveAppointment(firebaseUid) }, icon = { Icon(icon, null) }, label = { Text(label) })
-                    }
+        bottomBar = {
+            NavigationBar {
+                listOf(
+                    "Explore" to Icons.Default.Search,
+                    "Appointments" to Icons.Default.Event,
+                    "Account" to Icons.Default.Person
+                ).forEach { (label, icon) ->
+                    NavigationBarItem(
+                        selected = selectedTab == label,
+                        onClick = {
+                            selectedTab = label
+                            if (label == "Account") viewModel.loadCustomerData(firebaseUid)
+                            if (label == "Appointments") viewModel.loadActiveAppointment(firebaseUid)
+                        },
+                        icon = { Icon(icon, null) },
+                        label = { Text(label) }
+                    )
                 }
-            },
-            topBar = {
-                TopAppBar(
-                    modifier = Modifier.washYourCarHeader(),
-                    title = { Text("Wash Your Car", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold) },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+            }
+        },
+        topBar = {
+            TopAppBar(
+                modifier = Modifier.washYourCarHeader(),
+                title = { Text("Wash Your Car", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingValues ->
+        if (selectedTab != "Explore") {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    if (selectedTab == "Appointments") "Your next appointment" else "Account details",
+                    style = MaterialTheme.typography.headlineSmall
                 )
-            },
-            containerColor = MaterialTheme.colorScheme.background
-        ) { paddingValues ->
-            if (selectedTab != "Explore") {
-                Column(Modifier.fillMaxSize().padding(paddingValues).imePadding().verticalScroll(rememberScrollState()).padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(if (selectedTab == "Appointments") "Your next appointment" else "Account details", style = MaterialTheme.typography.headlineSmall)
-                    if (selectedTab == "Appointments") {
-                            if (activeAppointment != null) {
-                                Card(
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                    shape = RoundedCornerShape(12.dp),
-                                    elevation = CardDefaults.cardElevation(3.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(12.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        val dateFormatter = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-                                        val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-                                        val dateStr = dateFormatter.format(Date(activeAppointment!!.startTime))
-                                        val timeStr = timeFormatter.format(Date(activeAppointment!!.startTime))
-
-                                        Text(
-                                            text = "YOUR NEXT SLOT",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            modifier = Modifier
-                                                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
-                                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
-
-                                        val sharedPrefs = androidx.compose.ui.platform.LocalContext.current.getSharedPreferences("WashYourCarPrefs", android.content.Context.MODE_PRIVATE)
-                                        val savedWashName = sharedPrefs.getString("last_booked_wash_name", "Car Wash Station")
-
-                                        Text(
-                                            text = "📍 Location: $savedWashName",
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-
-                                        Text(
-                                            text = "Date: $dateStr",
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Text(
-                                            text = "Time: $timeStr",
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Text(
-                                            text = "Plate: ${activeAppointment!!.licensePlate}",
-                                            fontSize = 13.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-
-                                        Spacer(modifier = Modifier.height(4.dp))
-
-                                        OutlinedButton(
-                                            onClick = { showCancelConfirmationDialog = true },
-                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
-                                            shape = RoundedCornerShape(8.dp),
-                                            modifier = Modifier.fillMaxWidth(),
-                                            contentPadding = PaddingValues(vertical = 4.dp)
-                                        ) {
-                                            Text("Cancel Appointment", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                        }
-                                    }
-                                }
-                            } else {
-                                Card(
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(
-                                        text = "No upcoming appointments.",
-                                        fontSize = 13.sp,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.padding(12.dp)
-                                    )
-                                }
-                            }
-                         } else {
-                        Text(currentCustomer?.let { "${it.firstName} ${it.lastName}" } ?: "Your account", style = MaterialTheme.typography.titleLarge)
-                        if (profileLoading) LoadingCardSkeleton(lines = 4)
-                        profileMessage?.let { message ->
-                            Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            OutlinedButton(onClick = { viewModel.loadCustomerData(firebaseUid) }) { Text("Retry loading details") }
-                        }
-
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                shape = RoundedCornerShape(8.dp),
-                                elevation = CardDefaults.cardElevation(2.dp),
-                                modifier = Modifier.fillMaxWidth()
+                if (selectedTab == "Appointments") {
+                    if (activeAppointment != null) {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(3.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(
-                                        text = "Email: ${currentCustomer?.email ?: signedInEmail ?: "Not available"}",
-                                        fontSize = 14.sp,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = "Phone: ${currentCustomer?.phoneNumber ?: "Not stored on this device"}",
-                                        fontSize = 14.sp,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    if (customerCar != null) {
-                                        Text(
-                                            text = "Car: ${customerCar!!.model} [${customerCar!!.licensePlate}]",
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    } else {
-                                        Text(
-                                            text = "No car registered",
-                                            fontSize = 14.sp,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                        )
-                                    }
+                                val dateFormatter = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+                                val timeFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+                                val dateStr = dateFormatter.format(Date(activeAppointment!!.startTime))
+                                val timeStr = timeFormatter.format(Date(activeAppointment!!.startTime))
+
+                                Text(
+                                    text = "YOUR NEXT SLOT",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier
+                                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+
+                                val sharedPrefs = LocalContext.current.getSharedPreferences(
+                                    "WashYourCarPrefs",
+                                    android.content.Context.MODE_PRIVATE
+                                )
+                                val savedWashName = sharedPrefs.getString("last_booked_wash_name", "Car Wash Station")
+
+                                Text(
+                                    text = "📍 Location: $savedWashName",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Date: $dateStr",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "Time: $timeStr",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "Plate: ${activeAppointment!!.licensePlate}",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                OutlinedButton(
+                                    onClick = { showCancelConfirmationDialog = true },
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentPadding = PaddingValues(vertical = 4.dp)
+                                ) {
+                                    Text("Cancel Appointment", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
-
-                        LoyaltyCardSection(firebaseUid = firebaseUid)
-
-                        OutlinedButton(onClick = onThemeToggle, modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)) {
-                            Icon(if (isDarkTheme) Icons.Default.WbSunny else Icons.Default.DarkMode, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(if (isDarkTheme) "Light mode" else "Dark mode")
                         }
-                        Button(onClick = onLogout, modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB3261E), contentColor = Color.White),
-                            shape = RoundedCornerShape(16.dp), elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)) {
-                            Icon(Icons.AutoMirrored.Filled.ExitToApp, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Sign out")
+                    } else {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "No upcoming appointments.",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(12.dp)
+                            )
                         }
                     }
+                } else {
+                    Text(
+                        currentCustomer?.let { "${it.firstName} ${it.lastName}" } ?: "Your account",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    if (profileLoading) LoadingCardSkeleton(lines = 4)
+                    profileMessage?.let { message ->
+                        Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        OutlinedButton(onClick = { viewModel.loadCustomerData(firebaseUid) }) {
+                            Text("Retry loading details")
+                        }
+                    }
+
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(8.dp),
+                        elevation = CardDefaults.cardElevation(2.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "Email: ${currentCustomer?.email ?: signedInEmail ?: "Not available"}",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Phone: ${currentCustomer?.phoneNumber ?: "Not stored on this device"}",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            if (customerCar != null) {
+                                Text(
+                                    text = "Car: ${customerCar!!.model} [${customerCar!!.licensePlate}]",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            } else {
+                                Text(
+                                    text = "No car registered",
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+
+                    LoyaltyCardSection(firebaseUid = firebaseUid)
+
+                    OutlinedButton(
+                        onClick = onThemeToggle,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
+                    ) {
+                        Icon(if (isDarkTheme) Icons.Default.WbSunny else Icons.Default.DarkMode, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (isDarkTheme) "Light mode" else "Dark mode")
+                    }
+                    Button(
+                        onClick = onLogout,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB3261E), contentColor = Color.White),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Sign out")
+                    }
                 }
-            } else Column(
+            }
+        } else {
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
@@ -298,7 +337,7 @@ fun HomeScreen(
                         item {
                             FilterChip(
                                 selected = selectedCity == null,
-                                onClick = { viewModel.loadAllCarWashes() },
+                                onClick = { viewModel.selectAllCities() },
                                 label = { Text("All Cities") },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -319,6 +358,7 @@ fun HomeScreen(
                         }
                     }
                 }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -341,14 +381,11 @@ fun HomeScreen(
                         enabled = true
                     )
 
-                    IconButton(
-                        onClick = { filterBoxVisible = !filterBoxVisible },
-                        enabled = true
-                    ) {
+                    IconButton(onClick = { filterBoxVisible = !filterBoxVisible }) {
                         Icon(
                             Icons.Default.FilterList,
                             contentDescription = "Filters",
-                            tint = if (selectedFilters.isNotEmpty()) Color(0xFFFFB300) else MaterialTheme.colorScheme.primary
+                            tint = if (selectedTypes.isNotEmpty()) Color(0xFFFFB300) else MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -361,24 +398,24 @@ fun HomeScreen(
                         elevation = CardDefaults.cardElevation(2.dp)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            allServiceNames.forEach { filter ->
+                            WashType.entries.forEach { type ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { viewModel.toggleFilter(filter) }
+                                        .clickable { viewModel.toggleType(type) }
                                         .padding(vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Checkbox(
-                                        checked = selectedFilters.contains(filter),
-                                        onCheckedChange = { _ -> viewModel.toggleFilter(filter) },
+                                        checked = selectedTypes.contains(type),
+                                        onCheckedChange = { _ -> viewModel.toggleType(type) },
                                         colors = CheckboxDefaults.colors(
                                             checkedColor = MaterialTheme.colorScheme.primary,
                                             checkmarkColor = MaterialTheme.colorScheme.onPrimary
                                         )
                                     )
                                     Text(
-                                        text = filter,
+                                        text = type.label,
                                         fontSize = 14.sp,
                                         modifier = Modifier.padding(start = 8.dp),
                                         color = MaterialTheme.colorScheme.onSurface
@@ -389,7 +426,7 @@ fun HomeScreen(
                     }
                 }
 
-                if (carWashes.isEmpty()) {
+                if (washes.isEmpty()) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -422,15 +459,13 @@ fun HomeScreen(
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(carWashes) { wash ->
-                            val ratingInfo = carWashRatings[wash.carWashId]
-                            val displayRating = ratingInfo?.first
-                            val displayReviewCount = ratingInfo?.second ?: 0
+                        items(washes, key = { it.key }) { wash ->
+                            val ratingInfo = carWashRatings[wash.key]
                             CarWashCard(
-                                carWash = wash,
-                                rating = displayRating,
-                                reviewCount = displayReviewCount,
-                                onClick = { onCarWashClick(wash.carWashId) }
+                                wash = wash,
+                                rating = ratingInfo?.first,
+                                reviewCount = ratingInfo?.second ?: 0,
+                                onClick = { onWashClick(wash.type, wash.id) }
                             )
                         }
                     }
@@ -438,10 +473,11 @@ fun HomeScreen(
             }
         }
     }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CarWashCard(carWash: CarWash, rating: Float?, reviewCount: Int, onClick: () -> Unit) {
+fun CarWashCard(wash: WashListItem, rating: Float?, reviewCount: Int, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(18.dp),
@@ -455,11 +491,22 @@ fun CarWashCard(carWash: CarWash, rating: Float?, reviewCount: Int, onClick: () 
                     .fillMaxWidth()
                     .height(160.dp)
             ) {
-                androidx.compose.foundation.Image(
-                    painter = androidx.compose.ui.res.painterResource(id = com.example.washyourcar.R.drawable.spalatorie),
+                Image(
+                    painter = painterResource(id = R.drawable.spalatorie),
                     contentDescription = "Car Wash Image",
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    contentScale = ContentScale.Crop
+                )
+                Text(
+                    text = wash.type.label,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(10.dp)
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
                 )
             }
 
@@ -470,7 +517,7 @@ fun CarWashCard(carWash: CarWash, rating: Float?, reviewCount: Int, onClick: () 
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = carWash.name,
+                        text = wash.name,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -478,8 +525,11 @@ fun CarWashCard(carWash: CarWash, rating: Float?, reviewCount: Int, onClick: () 
                     )
 
                     if (rating != null && reviewCount > 0) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(1.dp), verticalAlignment = Alignment.CenterVertically) {
-                            val starsCount = rating.toInt()
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(1.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val starsCount = rating.toInt().coerceIn(0, 5)
                             repeat(starsCount) {
                                 Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(16.dp))
                             }
@@ -488,7 +538,7 @@ fun CarWashCard(carWash: CarWash, rating: Float?, reviewCount: Int, onClick: () 
                             }
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = String.format("%.1f", rating),
+                                text = String.format(Locale.getDefault(), "%.1f", rating),
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -509,13 +559,13 @@ fun CarWashCard(carWash: CarWash, rating: Float?, reviewCount: Int, onClick: () 
                 }
 
                 Text(
-                    text = "Mon–Sun  ${formatTime(carWash.openTime)} - ${formatTime(carWash.closeTime)}",
+                    text = "Mon–Sun  ${formatTime(wash.openTime)} - ${formatTime(wash.closeTime)}",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )
 
                 Text(
-                    text = "${carWash.address}, ${carWash.city}",
+                    text = "${wash.address}, ${wash.city}",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )

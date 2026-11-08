@@ -4,9 +4,12 @@ import AppDatabase
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.washyourcar.data.entities.Appointment
 import com.example.washyourcar.data.entities.Car
-import com.example.washyourcar.data.entities.CarWash
 import com.example.washyourcar.data.entities.Customer
+import com.example.washyourcar.data.entities.WashType
+import com.example.washyourcar.models.WashListItem
+import com.example.washyourcar.models.toListItem
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -21,14 +24,18 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
 
     private val database = AppDatabase.getDatabase(application)
     private val carWashDao = database.carWashDao()
+    private val autoWashDao = database.autoWashDao()
+    private val selfWashDao = database.selfWashDao()
     private val customerDao = database.customerDao()
     private val carDao = database.carDao()
     private val appointmentDao = database.appointmentDao()
-    private val carWashServiceDao = database.carWashServiceDao()
     private val reviewDao = database.reviewDao()
 
-    private val _carWashes = MutableStateFlow<List<CarWash>>(emptyList())
-    val carWashes: StateFlow<List<CarWash>> = _carWashes.asStateFlow()
+    private val _washes = MutableStateFlow<List<WashListItem>>(emptyList())
+    val washes: StateFlow<List<WashListItem>> = _washes.asStateFlow()
+
+    private val _selectedTypes = MutableStateFlow<Set<WashType>>(emptySet())
+    val selectedTypes: StateFlow<Set<WashType>> = _selectedTypes.asStateFlow()
 
     private val _cities = MutableStateFlow<List<String>>(emptyList())
     val cities: StateFlow<List<String>> = _cities.asStateFlow()
@@ -39,14 +46,8 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    private val _selectedFilters = MutableStateFlow<Set<String>>(emptySet())
-    val selectedFilters: StateFlow<Set<String>> = _selectedFilters.asStateFlow()
-
-    private val _allServiceNames = MutableStateFlow<List<String>>(emptyList())
-    val allServiceNames: StateFlow<List<String>> = _allServiceNames.asStateFlow()
-
-    private val _carWashRatings = MutableStateFlow<Map<Int, Pair<Float, Int>>>(emptyMap())
-    val carWashRatings: StateFlow<Map<Int, Pair<Float, Int>>> = _carWashRatings.asStateFlow()
+    private val _carWashRatings = MutableStateFlow<Map<String, Pair<Float, Int>>>(emptyMap())
+    val carWashRatings: StateFlow<Map<String, Pair<Float, Int>>> = _carWashRatings.asStateFlow()
 
     private val _currentCustomer = MutableStateFlow<Customer?>(null)
     val currentCustomer: StateFlow<Customer?> = _currentCustomer.asStateFlow()
@@ -54,39 +55,8 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
     private val _customerCar = MutableStateFlow<Car?>(null)
     val customerCar: StateFlow<Car?> = _customerCar.asStateFlow()
 
-    private val _activeAppointment = MutableStateFlow<com.example.washyourcar.data.entities.Appointment?>(null)
-    val activeAppointment: StateFlow<com.example.washyourcar.data.entities.Appointment?> = _activeAppointment
-
-    init {
-        loadCities()
-        loadAllCarWashes()
-        loadAllServices()
-    }
-
-    fun loadCarWashRatings(carWashIds: List<Int>) {
-        viewModelScope.launch {
-            val ratingsMap = mutableMapOf<Int, Pair<Float, Int>>()
-            for (id in carWashIds) {
-                val avgRating = reviewDao.getAverageRating(id)
-                val count = reviewDao.getReviewCount(id)
-                if (avgRating != null && count > 0) {
-                    ratingsMap[id] = avgRating to count
-                }
-            }
-            _carWashRatings.value = ratingsMap
-        }
-    }
-
-    private fun loadAllServices() {
-        viewModelScope.launch {
-            val allServices = mutableSetOf<String>()
-            for (carWash in carWashDao.getAllCarWashes()) {
-                val names = carWashDao.getServiceNamesByCarWashId(carWash.carWashId)
-                allServices.addAll(names)
-            }
-            _allServiceNames.value = allServices.sorted()
-        }
-    }
+    private val _activeAppointment = MutableStateFlow<Appointment?>(null)
+    val activeAppointment: StateFlow<Appointment?> = _activeAppointment.asStateFlow()
 
     private var profileJob: Job? = null
     private val _profileLoading = MutableStateFlow(false)
@@ -95,6 +65,85 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
     val profileMessage = _profileMessage.asStateFlow()
     private val _signedInEmail = MutableStateFlow<String?>(null)
     val signedInEmail = _signedInEmail.asStateFlow()
+
+    init {
+        loadCities()
+        refreshWashes()
+    }
+
+    private fun loadCities() {
+        viewModelScope.launch {
+            _cities.value = (carWashDao.getAllCities() +
+                    autoWashDao.getAllCities() +
+                    selfWashDao.getAllCities()).distinct().sorted()
+        }
+    }
+
+    private fun refreshWashes() {
+        viewModelScope.launch {
+            val city = _selectedCity.value
+            val query = _searchQuery.value.trim()
+            val types = _selectedTypes.value.ifEmpty { WashType.entries.toSet() }
+            val result = mutableListOf<WashListItem>()
+
+            if (WashType.NORMAL in types) {
+                val list = if (query.isEmpty()) carWashDao.getCarWashesByCity(city)
+                else carWashDao.searchByName(city, query)
+                result += list.map { it.toListItem() }
+            }
+            if (WashType.AUTOMATIC in types) {
+                val list = if (query.isEmpty()) autoWashDao.getAutoWashesByCity(city)
+                else autoWashDao.searchByName(city, query)
+                result += list.map { it.toListItem() }
+            }
+            if (WashType.SELF in types) {
+                val list = if (query.isEmpty()) selfWashDao.getSelfWashesByCity(city)
+                else selfWashDao.searchByName(city, query)
+                result += list.map { it.toListItem() }
+            }
+
+            _washes.value = result.sortedByDescending { it.rating }
+            loadRatings(_washes.value)
+        }
+    }
+
+    private fun loadRatings(items: List<WashListItem>) {
+        viewModelScope.launch {
+            val map = mutableMapOf<String, Pair<Float, Int>>()
+            for (item in items) {
+                val avg = reviewDao.getAverageRating(item.id)
+                val count = reviewDao.getReviewCount(item.id)
+                if (avg != null && count > 0) map[item.key] = avg to count
+            }
+            _carWashRatings.value = map
+        }
+    }
+
+    fun selectAllCities() {
+        _selectedCity.value = null
+        refreshWashes()
+    }
+
+    fun selectCity(city: String) {
+        _selectedCity.value = city
+        refreshWashes()
+    }
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+        refreshWashes()
+    }
+
+    fun toggleType(type: WashType) {
+        _selectedTypes.value = _selectedTypes.value.toMutableSet().apply {
+            if (!add(type)) remove(type)
+        }
+        refreshWashes()
+    }
+
+    fun refreshRatings() {
+        if (_washes.value.isNotEmpty()) loadRatings(_washes.value)
+    }
 
     fun loadCustomerData(firebaseUid: String) {
         profileJob?.cancel()
@@ -122,76 +171,8 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
                 _profileLoading.value = false
                 _profileMessage.value = if (customer == null)
                     "You are signed in, but no customer profile is stored on this device. Name, phone and vehicle details are stored locally and are not restored by signing in."
-                    else null
+                else null
             }
-        }
-    }
-
-    private fun loadCities() {
-        viewModelScope.launch {
-            _cities.value = carWashDao.getAllCities()
-        }
-    }
-
-    fun loadAllCarWashes() {
-        viewModelScope.launch {
-            _selectedCity.value = null
-            _carWashes.value = carWashDao.getAllCarWashes()
-            loadCarWashRatings(_carWashes.value.map { it.carWashId })
-        }
-    }
-
-    fun selectCity(city: String) {
-        viewModelScope.launch {
-            _selectedCity.value = city
-            _searchQuery.value = ""
-            _selectedFilters.value = emptySet()
-            _carWashes.value = carWashDao.getCarWashesByCity(city)
-            loadCarWashRatings(_carWashes.value.map { it.carWashId })
-        }
-    }
-
-    fun updateSearchQuery(query: String) {
-        _searchQuery.value = query
-        if (query.isNotEmpty()) {
-            _selectedFilters.value = emptySet()
-        }
-        applySearchAndFilters()
-    }
-
-    fun toggleFilter(serviceName: String) {
-        val current = _selectedFilters.value.toMutableSet()
-        if (current.contains(serviceName)) {
-            current.remove(serviceName)
-        } else {
-            current.add(serviceName)
-        }
-        _selectedFilters.value = current
-
-        if (current.isNotEmpty()) {
-            _searchQuery.value = ""
-        }
-        applySearchAndFilters()
-    }
-
-    private fun applySearchAndFilters() {
-        viewModelScope.launch {
-            val city = _selectedCity.value
-            val query = _searchQuery.value.trim()
-            val filters = _selectedFilters.value
-
-            when {
-                filters.isNotEmpty() -> {
-                    _carWashes.value = carWashDao.filterByServices(city, filters.toList())
-                }
-                query.isNotEmpty() -> {
-                    _carWashes.value = carWashDao.searchByName(city, query)
-                }
-                else -> {
-                    _carWashes.value = carWashDao.getCarWashesByCity(city)
-                }
-            }
-            loadCarWashRatings(_carWashes.value.map { it.carWashId })
         }
     }
 
@@ -206,13 +187,6 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             appointmentDao.updateStatus(appointmentId, "CANCELED")
             loadActiveAppointment(customerId)
-        }
-    }
-
-    fun refreshRatings() {
-        val currentCarWashIds = _carWashes.value.map { it.carWashId }
-        if (currentCarWashIds.isNotEmpty()) {
-            loadCarWashRatings(currentCarWashIds)
         }
     }
 }

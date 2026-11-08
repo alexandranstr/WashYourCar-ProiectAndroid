@@ -10,9 +10,9 @@ data class AutoWash(
     val name: String,
     val address: String,
     val city: String,
+    val automaticBays: Int,
     val phoneNumber: String,
     val rating: Float,
-    val accessCode: String,
     val openTime: Long,
     val closeTime: Long
 )

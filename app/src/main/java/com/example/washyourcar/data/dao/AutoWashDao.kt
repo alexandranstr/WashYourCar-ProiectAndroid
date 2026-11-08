@@ -11,12 +11,6 @@ interface AutoWashDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAndReturnId(autoWash: AutoWash): Long
 
-    @Query("SELECT EXISTS(SELECT 1 FROM auto_washes WHERE accessCode = :code)")
-    suspend fun doesAccessCodeExist(code: String): Boolean
-
-    @Query("SELECT autoWashId FROM auto_washes WHERE accessCode = :code")
-    suspend fun getAutoWashIdByAccessCode(code: String): Int?
-
     @Query("SELECT DISTINCT city FROM auto_washes ORDER BY city ASC")
     suspend fun getAllCities(): List<String>
 

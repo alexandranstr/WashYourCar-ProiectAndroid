@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
         AutoWashService::class,
         LoyaltyCard::class
     ],
-    version = 4,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -84,7 +84,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "wash_your_car_database"
                 )
-                    .fallbackToDestructiveMigration(false)
+                    // în dezvoltare: la schimbarea schemei baza se recreează în loc să dea eroare
+                    .fallbackToDestructiveMigration(true)
                     .addMigrations(MIGRATION_1_2)
                     .addCallback(AppDatabaseCallback())
                     .build()
@@ -99,33 +100,66 @@ abstract class AppDatabase : RoomDatabase() {
         override fun onCreate(db: SupportSQLiteDatabase) {
             super.onCreate(db)
             CoroutineScope(Dispatchers.IO).launch {
-                populateInitialData(db)
+                seedAll(db)
             }
         }
 
         override fun onOpen(db: SupportSQLiteDatabase) {
             super.onOpen(db)
             CoroutineScope(Dispatchers.IO).launch {
-                seedInitialDataIfEmpty(db)
+                seedAll(db)
             }
         }
 
-        private fun populateInitialData(db: SupportSQLiteDatabase) {
-            seedInitialDataIfEmpty(db)
+        private fun seedAll(db: SupportSQLiteDatabase) {
+            seedClassicServices(db)
+            seedSelfServices(db)
+            seedAutoServices(db)
         }
 
-        private fun seedInitialDataIfEmpty(db: SupportSQLiteDatabase) {
-            try {
-                val cursor = db.query("SELECT COUNT(*) as count FROM services")
-                val count = if (cursor.moveToFirst()) cursor.getInt(0) else 0
-                cursor.close()
+        private fun isTableEmpty(db: SupportSQLiteDatabase, table: String): Boolean {
+            val cursor = db.query("SELECT COUNT(*) FROM $table")
+            val count = if (cursor.moveToFirst()) cursor.getInt(0) else 0
+            cursor.close()
+            return count == 0
+        }
 
-                if (count > 0) return
+        private fun seedClassicServices(db: SupportSQLiteDatabase) {
+            try {
+                if (!isTableEmpty(db, "services")) return
 
                 db.execSQL("INSERT OR REPLACE INTO services (serviceId, name, description) VALUES (1, 'Exterior Wash', 'Standard exterior foam wash and microfiber drying.')")
                 db.execSQL("INSERT OR REPLACE INTO services (serviceId, name, description) VALUES (2, 'Interior Cleaning', 'Deep vacuuming, dashboard dusting, and window cleaning.')")
                 db.execSQL("INSERT OR REPLACE INTO services (serviceId, name, description) VALUES (3, 'Detailing', 'Professional stain removal and seat conditioning.')")
                 db.execSQL("INSERT OR REPLACE INTO services (serviceId, name, description) VALUES (4, 'Polish', 'Fine scratch removal and paint gloss restoration.')")
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        private fun seedSelfServices(db: SupportSQLiteDatabase) {
+            try {
+                if (!isTableEmpty(db, "self_services")) return
+
+                db.execSQL("INSERT OR REPLACE INTO self_services (selfServiceId, name, description) VALUES (1, 'Warm Water & Shampoo Wash', 'Hot water wash with shampoo for removing dirt.')")
+                db.execSQL("INSERT OR REPLACE INTO self_services (selfServiceId, name, description) VALUES (2, 'Active Foam / Rim Cleaner', 'Active foam for the body and a dedicated rim cleaner.')")
+                db.execSQL("INSERT OR REPLACE INTO self_services (selfServiceId, name, description) VALUES (3, 'Cold Water Rinse', 'Cold water rinse to remove foam and shampoo.')")
+                db.execSQL("INSERT OR REPLACE INTO self_services (selfServiceId, name, description) VALUES (4, 'Liquid Wax / Protection', 'Liquid wax that protects the paint and adds shine.')")
+                db.execSQL("INSERT OR REPLACE INTO self_services (selfServiceId, name, description) VALUES (5, 'Spot Free Final Rinse', 'Final rinse with demineralized / reverse osmosis water for a spot-free finish.')")
+                db.execSQL("INSERT OR REPLACE INTO self_services (selfServiceId, name, description) VALUES (6, 'Air Blower / Insect Remover', 'Air jet holder and bug remover station.')")
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        private fun seedAutoServices(db: SupportSQLiteDatabase) {
+            try {
+                if (!isTableEmpty(db, "auto_services")) return
+
+                db.execSQL("INSERT OR REPLACE INTO auto_services (autoServiceId, name, description) VALUES (1, 'Express / Basic Wash', 'Fast and economical wash program.')")
+                db.execSQL("INSERT OR REPLACE INTO auto_services (autoServiceId, name, description) VALUES (2, 'Classic Wash', 'Standard wash program with shampoo and rinse.')")
+                db.execSQL("INSERT OR REPLACE INTO auto_services (autoServiceId, name, description) VALUES (3, 'Wax Wash / Deluxe', 'Complete wash with wax protection and drying.')")
+                db.execSQL("INSERT OR REPLACE INTO auto_services (autoServiceId, name, description) VALUES (4, 'Ultimate / Intensive (Premium VIP)', 'Premium program with intensive cleaning, wax and full drying.')")
             } catch (e: Exception) {
                 e.printStackTrace()
             }
