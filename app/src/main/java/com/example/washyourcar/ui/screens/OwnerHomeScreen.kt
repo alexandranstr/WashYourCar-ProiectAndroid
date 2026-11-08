@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Card
@@ -57,7 +58,8 @@ fun OwnerHomeScreen(
     onNavigateToCarWashMonitoring: () -> Unit,
     onNavigateToManageAccount: () -> Unit,
     viewModel: OwnerHomeViewModel,
-    bottomBar: @Composable () -> Unit = {}
+    bottomBar: @Composable () -> Unit = {},
+    onNavigateToSubscriptions: () -> Unit = {}
 ) {
     val currentOwner by viewModel.currentOwner.collectAsState()
     val carWash by viewModel.carWash.collectAsState()
@@ -107,6 +109,14 @@ fun OwnerHomeScreen(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            androidx.compose.material3.Button(
+                onClick = onNavigateToSubscriptions,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Payment, contentDescription = null)
+                Spacer(modifier = Modifier.size(8.dp))
+                Text("Subscriptions")
+            }
             Card(
                 shape = RoundedCornerShape(24.dp),
                 elevation = CardDefaults.cardElevation(8.dp),

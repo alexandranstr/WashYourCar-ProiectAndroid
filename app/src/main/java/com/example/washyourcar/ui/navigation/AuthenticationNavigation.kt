@@ -57,6 +57,7 @@ sealed class Screen(val route: String) {
     object EmployeeActivity : Screen("employee_activity")
     object CarWashMonitoring : Screen("car_wash_monitoring")
     object ManageAccount : Screen("manage_account")
+    object OwnerSubscriptions : Screen("owner_subscriptions")
 
     object LoginEmployee : Screen("login_employee")
     object RegisterEmployee : Screen("register_employee")
@@ -231,7 +232,14 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                     onNavigateToCarWashMonitoring = { navigateOwnerTab(Screen.CarWashMonitoring.route) },
                     onNavigateToManageAccount = { navigateOwnerTab(Screen.ManageAccount.route) },
                     bottomBar = { OwnerBottomBar(Screen.OwnerHome.route, navigateOwnerTab) },
-                    viewModel = ownerHomeViewModel
+                    viewModel = ownerHomeViewModel,
+                    onNavigateToSubscriptions = { navController.navigate(Screen.OwnerSubscriptions.route) }
+                )
+            }
+
+            composable(Screen.OwnerSubscriptions.route) {
+                com.example.washyourcar.ui.screens.OwnerSubscriptionsScreen(
+                    onBack = { navController.popBackStack() }
                 )
             }
 
