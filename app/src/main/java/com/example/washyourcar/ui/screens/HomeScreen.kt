@@ -257,6 +257,8 @@ fun HomeScreen(
                                 }
                             }
 
+                        LoyaltyCardSection(firebaseUid = firebaseUid)
+
                         OutlinedButton(onClick = onThemeToggle, modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)) {
                             Icon(if (isDarkTheme) Icons.Default.WbSunny else Icons.Default.DarkMode, null)

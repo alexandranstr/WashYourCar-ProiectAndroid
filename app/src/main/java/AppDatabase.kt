@@ -28,9 +28,10 @@ import kotlinx.coroutines.launch
         SelfWashService::class,
         AutoWash::class,
         AutoService::class,
-        AutoWashService::class
+        AutoWashService::class,
+        LoyaltyCard::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -52,6 +53,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun autoWashDao(): AutoWashDao
 
     abstract fun autoWashServiceDao(): AutoWashServiceDao
+
+    abstract fun loyaltyCardDao(): LoyaltyCardDao
 
     companion object {
         @Volatile
