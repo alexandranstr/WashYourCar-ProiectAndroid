@@ -95,9 +95,13 @@ fun CarWashDetailScreen(
     firebaseUid: String,
     onBack: () -> Unit,
     viewModel: CarWashDetailViewModel,
-    weatherViewModel: WeatherViewModel = viewModel()
+    weatherViewModel: WeatherViewModel = viewModel(),
+    washType: com.example.washyourcar.data.entities.WashType = com.example.washyourcar.data.entities.WashType.NORMAL
 ) {
     val carWash by viewModel.carWash.collectAsState()
+    val washInfo by viewModel.washInfo.collectAsState()
+    // Appointments are assigned to employees, which only classic washes have.
+    val canBook = washType == com.example.washyourcar.data.entities.WashType.NORMAL
     val availableSlots by viewModel.availableSlots.collectAsState()
     val customerCar by viewModel.customerCar.collectAsState()
     val isSuccess by viewModel.isSuccess.collectAsState()
@@ -150,8 +154,8 @@ fun CarWashDetailScreen(
         weatherViewModel.fetchWeather("Brasov", "09981e4b7d1730200bcc5f422d1f6f85")
     }
 
-    LaunchedEffect(carWashId, firebaseUid) {
-        viewModel.loadCarWashDetails(carWashId, firebaseUid)
+    LaunchedEffect(carWashId, firebaseUid, washType) {
+        viewModel.loadCarWashDetails(carWashId, firebaseUid, washType)
     }
 
     LaunchedEffect(isSuccess) {
@@ -300,6 +304,10 @@ fun CarWashDetailScreen(
                             fontSize = 14.sp
                         )
 
+                        washInfo?.let {
+                            Text(text = "${washType.label} · $it", color = MaterialTheme.colorScheme.onPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        }
+
                         HorizontalDivider(color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.3f), modifier = Modifier.padding(vertical = 4.dp))
 
                         Text(text = "Premium Services Available: ", color = MaterialTheme.colorScheme.onPrimary, fontSize = 13.sp)
@@ -433,16 +441,25 @@ fun CarWashDetailScreen(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                Button(
-                    elevation = washYourCarButtonElevation(),
-                    onClick = { bookingStep = 0; showBottomSheet = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = WashYourCarButtonShape,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                ) {
-                    Text("Schedule appointment", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                if (canBook) {
+                    Button(
+                        elevation = washYourCarButtonElevation(),
+                        onClick = { bookingStep = 0; showBottomSheet = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        shape = WashYourCarButtonShape,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                    ) {
+                        Text("Schedule appointment", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    Text(
+                        text = "No appointment needed – just drive in during opening hours.",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }

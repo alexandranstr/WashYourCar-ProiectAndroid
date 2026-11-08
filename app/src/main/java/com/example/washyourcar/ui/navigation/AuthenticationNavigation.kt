@@ -50,7 +50,7 @@ sealed class Screen(val route: String) {
     object LoginClient : Screen("login_client")
     object RegisterClient : Screen("register_client")
     object Home : Screen("home")
-    object CarWashDetail : Screen("car_wash_detail/{carWashId}")
+    object CarWashDetail : Screen("car_wash_detail/{carWashId}?washType={washType}")
 
     object LoginOwner : Screen("login_owner")
     object RegisterOwner : Screen("register_owner")
@@ -300,7 +300,11 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                         override fun <T : ViewModel> create(modelClass: Class<T>): T {
                             return com.example.washyourcar.ui.viewmodel.CarWashMonitoringViewModel(
                                 carWashServiceDao = database.carWashServiceDao(),
-                                carWashDao = database.carWashDao()
+                                carWashDao = database.carWashDao(),
+                                selfWashDao = database.selfWashDao(),
+                                selfWashServiceDao = database.selfWashServiceDao(),
+                                autoWashDao = database.autoWashDao(),
+                                autoWashServiceDao = database.autoWashServiceDao()
                             ) as T
                         }
                     }
@@ -344,7 +348,7 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                         authViewModel.logout()
                         navController.navigate(Screen.RoleSelection.route) { popUpTo(Screen.Home.route) { inclusive = true } }
                     },
-                    onWashClick = { _, id -> navController.navigate("car_wash_detail/$id") }
+                    onWashClick = { type, id -> navController.navigate("car_wash_detail/$id?washType=${type.name}") }
                 )
             }
 
@@ -404,9 +408,15 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
 
             composable(
                 route = Screen.CarWashDetail.route,
-                arguments = listOf(navArgument("carWashId") { type = NavType.IntType })
+                arguments = listOf(
+                    navArgument("carWashId") { type = NavType.IntType },
+                    navArgument("washType") { type = NavType.StringType; defaultValue = WashType.NORMAL.name }
+                )
             ) { backStackEntry ->
                 val carWashId = backStackEntry.arguments?.getInt("carWashId") ?: 0
+                val washType = runCatching {
+                    WashType.valueOf(backStackEntry.arguments?.getString("washType") ?: WashType.NORMAL.name)
+                }.getOrDefault(WashType.NORMAL)
                 val currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
                 val detailViewModel: CarWashDetailViewModel = viewModel(
@@ -419,7 +429,11 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                                 carDao = database.carDao(),
                                 carWashServiceDao = database.carWashServiceDao(),
                                 reviewDao = database.reviewDao(),
-                                customerDao = database.customerDao()
+                                customerDao = database.customerDao(),
+                                selfWashDao = database.selfWashDao(),
+                                selfWashServiceDao = database.selfWashServiceDao(),
+                                autoWashDao = database.autoWashDao(),
+                                autoWashServiceDao = database.autoWashServiceDao()
                             ) as T
                         }
                     }
@@ -429,7 +443,8 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                     carWashId = carWashId,
                     firebaseUid = currentUid,
                     onBack = { navController.popBackStack() },
-                    viewModel = detailViewModel
+                    viewModel = detailViewModel,
+                    washType = washType
                 )
             }
         }

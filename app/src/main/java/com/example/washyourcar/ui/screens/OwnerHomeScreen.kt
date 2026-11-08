@@ -67,17 +67,41 @@ fun OwnerHomeScreen(
     val reviews by viewModel.reviews.collectAsState()
     val computedRating by viewModel.computedRating.collectAsState()
     val reviewCount by viewModel.reviewCount.collectAsState()
+    val selfWash by viewModel.selfWash.collectAsState()
+    val autoWash by viewModel.autoWash.collectAsState()
+    val selfServices by viewModel.selfServices.collectAsState()
+    val autoServices by viewModel.autoServices.collectAsState()
 
     LaunchedEffect(firebaseUid) {
         viewModel.initOwner(firebaseUid)
     }
 
-    val openTimeFormatted = carWash?.openTime?.let { time ->
+    // The owner can have a classic, self-service or automatic wash – show whichever exists.
+    val washName = carWash?.name ?: selfWash?.name ?: autoWash?.name
+    val washAddress = carWash?.let { "${it.address}, ${it.city}" }
+        ?: selfWash?.let { "${it.address}, ${it.city}" }
+        ?: autoWash?.let { "${it.address}, ${it.city}" }
+    val washPhone = carWash?.phoneNumber ?: selfWash?.phoneNumber ?: autoWash?.phoneNumber
+    val washOpen = carWash?.openTime ?: selfWash?.openTime ?: autoWash?.openTime
+    val washClose = carWash?.closeTime ?: selfWash?.closeTime ?: autoWash?.closeTime
+    val washTypeLabel = when {
+        carWash != null -> "Classic wash"
+        selfWash != null -> "Self-service wash · ${selfWash!!.normalSelfWashBays} normal / ${selfWash!!.premiumSelfWashBays} premium bays"
+        autoWash != null -> "Automatic wash · ${autoWash!!.automaticBays} bays"
+        else -> null
+    }
+    val serviceNames = when {
+        carWash != null -> services.map { it.serviceName }
+        selfWash != null -> selfServices.map { it.serviceName }
+        else -> autoServices.map { it.serviceName }
+    }
+
+    val openTimeFormatted = washOpen?.let { time ->
         val h = time / 100
         val m = time % 100
         String.format("%02d:%02d", h, m)
     } ?: "N/A"
-    val closeTimeFormatted = carWash?.closeTime?.let { time ->
+    val closeTimeFormatted = washClose?.let { time ->
         val h = time / 100
         val m = time % 100
         String.format("%02d:%02d", h, m)
@@ -131,21 +155,24 @@ fun OwnerHomeScreen(
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text(
-                                text = carWash?.name ?: "No Car Wash Yet",
+                                text = washName ?: "No Car Wash Yet",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
                             Spacer(modifier = Modifier.height(4.dp))
 
-                            if (carWash != null) {
+                            if (washName != null) {
+                                washTypeLabel?.let {
+                                    Text(text = it, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimary)
+                                }
                                 Text(
-                                    text = "Address: ${carWash!!.address}, ${carWash!!.city}",
+                                    text = "Address: $washAddress",
                                     fontSize = 14.sp,
                                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
                                 )
                                 Text(
-                                    text = "Phone: ${carWash!!.phoneNumber}",
+                                    text = "Phone: $washPhone",
                                     fontSize = 14.sp,
                                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
                                 )
@@ -154,12 +181,14 @@ fun OwnerHomeScreen(
                                     fontSize = 14.sp,
                                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
                                 )
-                                Text(
-                                    text = "Access Code: ${carWash!!.accessCode}",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
-                                )
+                                carWash?.let {
+                                    Text(
+                                        text = "Access Code: ${it.accessCode}",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
+                                    )
+                                }
                             } else {
                                 Text(
                                     text = "Complete your car wash setup to see details here.",
@@ -170,13 +199,13 @@ fun OwnerHomeScreen(
 
                             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.4f))
 
-                            if (services.isEmpty()) {
+                            if (serviceNames.isEmpty()) {
                                 Text("No services active.", color = MaterialTheme.colorScheme.onPrimary)
                             } else {
-                                services.forEach { detail ->
+                                serviceNames.forEach { serviceName ->
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(text = "• ", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
-                                        Text(text = detail.serviceName, fontSize = 14.sp, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f))
+                                        Text(text = serviceName, fontSize = 14.sp, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f))
                                     }
                                 }
                             }

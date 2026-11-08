@@ -8,6 +8,7 @@ import com.example.washyourcar.data.entities.Appointment
 import com.example.washyourcar.data.entities.Car
 import com.example.washyourcar.data.entities.Customer
 import com.example.washyourcar.data.entities.WashType
+import com.example.washyourcar.data.entities.reviewKey
 import com.example.washyourcar.models.WashListItem
 import com.example.washyourcar.models.toListItem
 import com.google.firebase.auth.FirebaseAuth
@@ -111,8 +112,8 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             val map = mutableMapOf<String, Pair<Float, Int>>()
             for (item in items) {
-                val avg = reviewDao.getAverageRating(item.id)
-                val count = reviewDao.getReviewCount(item.id)
+                val avg = reviewDao.getAverageRating(item.type.reviewKey(item.id))
+                val count = reviewDao.getReviewCount(item.type.reviewKey(item.id))
                 if (avg != null && count > 0) map[item.key] = avg to count
             }
             _carWashRatings.value = map

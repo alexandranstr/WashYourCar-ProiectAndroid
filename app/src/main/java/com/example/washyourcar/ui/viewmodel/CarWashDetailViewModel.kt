@@ -21,8 +21,19 @@ class CarWashDetailViewModel(
     private val carDao: com.example.washyourcar.data.dao.CarDao,
     private val carWashServiceDao: com.example.washyourcar.data.dao.CarWashServiceDao,
     private val reviewDao: ReviewDao,
-    private val customerDao: com.example.washyourcar.data.dao.CustomerDao
+    private val customerDao: com.example.washyourcar.data.dao.CustomerDao,
+    private val selfWashDao: SelfWashDao? = null,
+    private val selfWashServiceDao: SelfWashServiceDao? = null,
+    private val autoWashDao: AutoWashDao? = null,
+    private val autoWashServiceDao: AutoWashServiceDao? = null
 ) : ViewModel() {
+
+    private val _washType = MutableStateFlow(WashType.NORMAL)
+    val washType: StateFlow<WashType> = _washType
+
+    /** Extra line for self/auto washes (number of bays). */
+    private val _washInfo = MutableStateFlow<String?>(null)
+    val washInfo: StateFlow<String?> = _washInfo
 
     private val _carWash = MutableStateFlow<CarWash?>(null)
     val carWash: StateFlow<CarWash?> = _carWash
@@ -58,13 +69,41 @@ class CarWashDetailViewModel(
     private val _customerExistingReview = MutableStateFlow<Review?>(null)
     val customerExistingReview: StateFlow<Review?> = _customerExistingReview
 
-    fun loadCarWashDetails(carWashId: Int, customerUid: String) {
+    fun loadCarWashDetails(carWashId: Int, customerUid: String, type: WashType = WashType.NORMAL) {
+        _washType.value = type
         viewModelScope.launch {
-            _carWash.value = carWashDao.getCarWashById(carWashId)
+            when (type) {
+                WashType.NORMAL -> {
+                    _carWash.value = carWashDao.getCarWashById(carWashId)
+                    _carWashServiceNames.value = carWashDao.getServiceNamesByCarWashId(carWashId)
+                    _availableServices.value = carWashServiceDao.getServicesByCarWashId(carWashId)
+                }
+                // Self/auto washes are mapped onto CarWash so the existing detail screen can show them.
+                WashType.SELF -> {
+                    val wash = selfWashDao?.getSelfWashById(carWashId)
+                    _carWash.value = wash?.let {
+                        CarWash(it.selfWashId, it.ownerId, it.name, it.address, it.city, it.phoneNumber, it.rating, "", it.openTime, it.closeTime)
+                    }
+                    _washInfo.value = wash?.let { "${it.normalSelfWashBays} normal / ${it.premiumSelfWashBays} premium self-service bays" }
+                    _carWashServiceNames.value = selfWashDao?.getServiceNamesBySelfWashId(carWashId).orEmpty()
+                    _availableServices.value = selfWashServiceDao?.getServicesBySelfWashId(carWashId).orEmpty().map {
+                        CarWashServiceDetails(CarWashService(carWashId, it.selfWashService.selfServiceId, it.selfWashService.price, it.selfWashService.duration), it.serviceName, it.serviceDescription)
+                    }
+                }
+                WashType.AUTOMATIC -> {
+                    val wash = autoWashDao?.getAutoWashById(carWashId)
+                    _carWash.value = wash?.let {
+                        CarWash(it.autoWashId, it.ownerId, it.name, it.address, it.city, it.phoneNumber, it.rating, "", it.openTime, it.closeTime)
+                    }
+                    _washInfo.value = wash?.let { "${it.automaticBays} automatic wash bays" }
+                    _carWashServiceNames.value = autoWashDao?.getServiceNamesByAutoWashId(carWashId).orEmpty()
+                    _availableServices.value = autoWashServiceDao?.getServicesByAutoWashId(carWashId).orEmpty().map {
+                        CarWashServiceDetails(CarWashService(carWashId, it.autoWashServices.autoServiceId, it.autoWashServices.price, it.autoWashServices.duration), it.serviceName, it.serviceDescription)
+                    }
+                }
+            }
             val carList = carDao.getCarsByCustomerId(customerUid)
             _customerCar.value = carList.firstOrNull()
-            _carWashServiceNames.value = carWashDao.getServiceNamesByCarWashId(carWashId)
-            _availableServices.value = carWashServiceDao.getServicesByCarWashId(carWashId)
 
             try {
                 val tips = com.example.washyourcar.data.network.RetrofitClient.apiService.getTips()
@@ -80,7 +119,8 @@ class CarWashDetailViewModel(
         }
     }
 
-    private fun loadReviews(carWashId: Int, customerUid: String) {
+    private fun loadReviews(washId: Int, customerUid: String) {
+        val carWashId = _washType.value.reviewKey(washId)
         viewModelScope.launch {
             _reviews.value = reviewDao.getReviewsByCarWashIdOnce(carWashId)
             _reviewCount.value = reviewDao.getReviewCount(carWashId)
@@ -89,7 +129,8 @@ class CarWashDetailViewModel(
         }
     }
 
-    fun submitReview(carWashId: Int, customerId: String, rating: Int, comment: String) {
+    fun submitReview(washId: Int, customerId: String, rating: Int, comment: String) {
+        val carWashId = _washType.value.reviewKey(washId)
         viewModelScope.launch {
             val customerName = customerDao.getCustomerFullName(customerId) ?: "Anonymous"
             val existingReview = reviewDao.getCustomerReviewForCarWash(carWashId, customerId)
@@ -117,7 +158,7 @@ class CarWashDetailViewModel(
             }
 
             reviewDao.insertReview(review)
-            loadReviews(carWashId, customerId)
+            loadReviews(washId, customerId)
         }
     }
 

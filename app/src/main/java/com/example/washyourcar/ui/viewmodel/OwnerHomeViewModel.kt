@@ -18,6 +18,8 @@ import com.example.washyourcar.data.entities.Owner
 import com.example.washyourcar.data.entities.Review
 import com.example.washyourcar.data.entities.SelfWash
 import com.example.washyourcar.data.entities.SelfWashServiceDetails
+import com.example.washyourcar.data.entities.WashType
+import com.example.washyourcar.data.entities.reviewKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -82,7 +84,7 @@ class OwnerHomeViewModel(
             if (self != null) {
                 _selfWash.value = self
                 _selfServices.value = selfWashServiceDao.getServicesBySelfWashId(self.selfWashId)
-                loadReviews(self.selfWashId)
+                loadReviews(WashType.SELF.reviewKey(self.selfWashId))
                 return@launch
             }
 
@@ -91,7 +93,7 @@ class OwnerHomeViewModel(
             if (auto != null) {
                 _autoWash.value = auto
                 _autoServices.value = autoWashServiceDao.getServicesByAutoWashId(auto.autoWashId)
-                loadReviews(auto.autoWashId)
+                loadReviews(WashType.AUTOMATIC.reviewKey(auto.autoWashId))
                 return@launch
             }
         }
