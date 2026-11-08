@@ -1,5 +1,3 @@
-package com.example.washyourcar.data
-
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
@@ -7,6 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.washyourcar.data.Converters
 import com.example.washyourcar.data.dao.*
 import com.example.washyourcar.data.entities.*
 import kotlinx.coroutines.CoroutineScope
@@ -25,7 +24,7 @@ import kotlinx.coroutines.launch
         Appointment::class,
         Review::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -37,7 +36,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun carWashServiceDao(): CarWashServiceDao
     abstract fun ownerDao(): OwnerDao
     abstract fun employeeDao(): EmployeeDao
-
     abstract fun appointmentDao(): AppointmentDao
     abstract fun reviewDao(): ReviewDao
 
@@ -69,6 +67,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "wash_your_car_database"
                 )
+                    .fallbackToDestructiveMigration(false)
                     .addMigrations(MIGRATION_1_2)
                     .addCallback(AppDatabaseCallback())
                     .build()

@@ -1,21 +1,21 @@
 package com.example.washyourcar.ui.viewmodel
 
+import AppDatabase
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.washyourcar.data.AppDatabase
 import com.example.washyourcar.data.entities.Car
 import com.example.washyourcar.data.entities.CarWash
 import com.example.washyourcar.data.entities.Customer
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.catch
-import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 
 class ClientHomeViewModel(application: Application) : AndroidViewModel(application) {
 

@@ -1,22 +1,18 @@
 package com.example.washyourcar.ui.navigation
 
+import AppDatabase
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -26,11 +22,25 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.washyourcar.data.AppDatabase
-import com.example.washyourcar.ui.screens.*
+import com.example.washyourcar.ui.screens.CarWashDetailScreen
+import com.example.washyourcar.ui.screens.EmployeeHomeScreen
+import com.example.washyourcar.ui.screens.HomeScreen
+import com.example.washyourcar.ui.screens.LogInClientScreen
+import com.example.washyourcar.ui.screens.LogInEmployeeScreen
+import com.example.washyourcar.ui.screens.LogInOwnerScreen
+import com.example.washyourcar.ui.screens.OwnerAccountScreen
+import com.example.washyourcar.ui.screens.OwnerBottomBar
+import com.example.washyourcar.ui.screens.OwnerCarWashMonitoringScreen
+import com.example.washyourcar.ui.screens.OwnerEmployeeActivityScreen
+import com.example.washyourcar.ui.screens.OwnerHomeScreen
+import com.example.washyourcar.ui.screens.RegisterClientScreen
+import com.example.washyourcar.ui.screens.RegisterEmployeeScreen
+import com.example.washyourcar.ui.screens.RegisterOwnerScreen
+import com.example.washyourcar.ui.screens.RegisterWashDetailsScreen
+import com.example.washyourcar.ui.screens.RoleSelectionScreen
 import com.example.washyourcar.ui.theme.WashYourCarTheme
 import com.example.washyourcar.ui.viewmodel.CarWashDetailViewModel
-import com.example.washyourcar.viewmodel.*
+import com.example.washyourcar.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String) {
