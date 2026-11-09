@@ -363,7 +363,7 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                     )
                 }
 
-                composable(Screen.Home.route) {
+                composable(Screen.Home.route)  {
                     val currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
                     HomeScreen(

@@ -42,7 +42,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.washyourcar.R
 import com.example.washyourcar.data.entities.WashType
 import com.example.washyourcar.models.WashListItem
+import com.example.washyourcar.network.DeviceWeather
+import com.example.washyourcar.network.DeviceWeatherApi
 import com.example.washyourcar.ui.viewmodel.ClientHomeViewModel
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -77,6 +80,15 @@ fun HomeScreen(
         if (firebaseUid.isNotEmpty()) {
             viewModel.loadCustomerData(firebaseUid)
             viewModel.loadActiveAppointment(firebaseUid)
+        }
+    }
+
+    // Weather for the header: location comes from the device's IP, refreshed every 30 minutes.
+    var weather by remember { mutableStateOf<DeviceWeather?>(null) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            weather = DeviceWeatherApi.fetch() ?: weather
+            delay(30 * 60 * 1000L)
         }
     }
 
@@ -136,7 +148,8 @@ fun HomeScreen(
         topBar = {
             TopAppBar(
                 modifier = Modifier.washYourCarHeader(),
-                title = { Text("Wash Your Car", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold) },
+                title = { Text("Wash Your Car!", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold) },
+                actions = { WeatherHeaderBadge(weather) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         },
@@ -568,6 +581,40 @@ fun CarWashCard(wash: WashListItem, rating: Float?, reviewCount: Int, onClick: (
                     text = "${wash.address}, ${wash.city}",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeatherHeaderBadge(weather: DeviceWeather?) {
+    Row(
+        modifier = Modifier.padding(end = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (weather == null) {
+            Text(
+                text = "--°C",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+            )
+        } else {
+            Text(text = weather.emoji, fontSize = 28.sp)
+            Spacer(modifier = Modifier.width(6.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "${weather.temperatureC}°C",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+                Text(
+                    text = weather.city?.let { "${weather.description} · $it" } ?: weather.description,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
+                    maxLines = 1
                 )
             }
         }
