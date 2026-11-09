@@ -100,8 +100,11 @@ fun CarWashDetailScreen(
 ) {
     val carWash by viewModel.carWash.collectAsState()
     val washInfo by viewModel.washInfo.collectAsState()
-    // Appointments are assigned to employees, which only classic washes have.
-    val canBook = washType == com.example.washyourcar.data.entities.WashType.NORMAL
+    val bayStatuses by viewModel.bayStatuses.collectAsState()
+    // Classic: employee appointments. Self-service: only premium bays. Automatic: any bay.
+    val canBook = washType == com.example.washyourcar.data.entities.WashType.NORMAL ||
+        (carWash != null && viewModel.bookableBays > 0)
+    RefreshEvery { viewModel.refreshBays() }
     val availableSlots by viewModel.availableSlots.collectAsState()
     val customerCar by viewModel.customerCar.collectAsState()
     val isSuccess by viewModel.isSuccess.collectAsState()
@@ -199,6 +202,11 @@ fun CarWashDetailScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onPrimary)
                     }
                 },
+                actions = {
+                    carWash?.let { w ->
+                        NavigateToWashButton(w.latitude, w.longitude, "${w.address}, ${w.city}", tint = MaterialTheme.colorScheme.onPrimary)
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         },
@@ -223,6 +231,12 @@ fun CarWashDetailScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+              Column(
+                  modifier = Modifier
+                      .weight(1f)
+                      .verticalScroll(rememberScrollState()),
+                  verticalArrangement = Arrangement.spacedBy(16.dp)
+              ) {
                 randomTip?.let { tip ->
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
@@ -348,6 +362,8 @@ fun CarWashDetailScreen(
                     }
                 }
 
+                BaysSection(bayStatuses, title = "Bays & waiting times")
+
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -428,18 +444,15 @@ fun CarWashDetailScreen(
                             }
                         }
                     } else {
-                        LazyColumn(
+                        Column(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            lazyItems(reviews) { review ->
-                                ReviewCard(review = review)
-                            }
+                            reviews.forEach { review -> ReviewCard(review = review) }
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.weight(1f))
+              }
 
                 if (canBook) {
                     Button(
@@ -451,11 +464,18 @@ fun CarWashDetailScreen(
                             .fillMaxWidth()
                             .height(50.dp)
                     ) {
-                        Text("Schedule appointment", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            when (washType) {
+                                com.example.washyourcar.data.entities.WashType.SELF -> "Book a premium bay"
+                                com.example.washyourcar.data.entities.WashType.AUTOMATIC -> "Book a wash slot"
+                                else -> "Schedule appointment"
+                            },
+                            color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold
+                        )
                     }
                 } else {
                     Text(
-                        text = "No appointment needed – just drive in during opening hours.",
+                        text = "No booking needed – normal bays are walk-in. Check the waiting times above.",
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.fillMaxWidth()
@@ -547,6 +567,9 @@ fun CarWashDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text("Schedule appointment", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                if (washType == com.example.washyourcar.data.entities.WashType.SELF) {
+                    Text("Premium bays must be booked at least 1 hour in advance.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
 
 
                 val totalDuration = availableServices

@@ -15,5 +15,7 @@ data class SelfWash(
     val openTime: Long,
     val closeTime: Long,
     val normalSelfWashBays: Int,
-    val premiumSelfWashBays: Int = 0
+    val premiumSelfWashBays: Int = 0,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )

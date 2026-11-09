@@ -59,6 +59,8 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
+    // OpenStreetMap (free, no API key)
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     testImplementation(libs.junit)

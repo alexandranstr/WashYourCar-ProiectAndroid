@@ -14,5 +14,7 @@ data class AutoWash(
     val phoneNumber: String,
     val rating: Float,
     val openTime: Long,
-    val closeTime: Long
+    val closeTime: Long,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )

@@ -38,6 +38,29 @@ class CarWashDetailViewModel(
     private val _carWash = MutableStateFlow<CarWash?>(null)
     val carWash: StateFlow<CarWash?> = _carWash
 
+    private var washId = -1
+    private var normalBays = 0
+    private var premiumBays = 0
+    private var automaticBays = 0
+
+    /** Bays clients can book: premium self-service bays or automatic bays (0 for classic washes). */
+    val bookableBays: Int get() = if (_washType.value == WashType.SELF) premiumBays else automaticBays
+
+    private val _bayStatuses = MutableStateFlow<List<BayStatus>>(emptyList())
+    val bayStatuses: StateFlow<List<BayStatus>> = _bayStatuses
+
+    /** Recomputes the (simulated) queues; call periodically from the screen. */
+    fun refreshBays() {
+        val type = _washType.value
+        if (type == WashType.NORMAL || washId == -1) return
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            val key = type.washKey(washId)
+            val bookings = appointmentDao.getOpenBookings(key, now, now + 24 * 3_600_000L)
+            _bayStatuses.value = BayQueueSimulator.statuses(key, normalBays, premiumBays, automaticBays, bookings, now)
+        }
+    }
+
     private val _customerCar = MutableStateFlow<com.example.washyourcar.data.entities.Car?>(null)
     val customerCar: StateFlow<com.example.washyourcar.data.entities.Car?> = _customerCar
 
@@ -71,6 +94,7 @@ class CarWashDetailViewModel(
 
     fun loadCarWashDetails(carWashId: Int, customerUid: String, type: WashType = WashType.NORMAL) {
         _washType.value = type
+        washId = carWashId
         viewModelScope.launch {
             when (type) {
                 WashType.NORMAL -> {
@@ -82,8 +106,10 @@ class CarWashDetailViewModel(
                 WashType.SELF -> {
                     val wash = selfWashDao?.getSelfWashById(carWashId)
                     _carWash.value = wash?.let {
-                        CarWash(it.selfWashId, it.ownerId, it.name, it.address, it.city, it.phoneNumber, it.rating, "", it.openTime, it.closeTime)
+                        CarWash(it.selfWashId, it.ownerId, it.name, it.address, it.city, it.phoneNumber, it.rating, "", it.openTime, it.closeTime, it.latitude, it.longitude)
                     }
+                    normalBays = wash?.normalSelfWashBays ?: 0
+                    premiumBays = wash?.premiumSelfWashBays ?: 0
                     _washInfo.value = wash?.let { "${it.normalSelfWashBays} normal / ${it.premiumSelfWashBays} premium self-service bays" }
                     _carWashServiceNames.value = selfWashDao?.getServiceNamesBySelfWashId(carWashId).orEmpty()
                     _availableServices.value = selfWashServiceDao?.getServicesBySelfWashId(carWashId).orEmpty().map {
@@ -93,8 +119,9 @@ class CarWashDetailViewModel(
                 WashType.AUTOMATIC -> {
                     val wash = autoWashDao?.getAutoWashById(carWashId)
                     _carWash.value = wash?.let {
-                        CarWash(it.autoWashId, it.ownerId, it.name, it.address, it.city, it.phoneNumber, it.rating, "", it.openTime, it.closeTime)
+                        CarWash(it.autoWashId, it.ownerId, it.name, it.address, it.city, it.phoneNumber, it.rating, "", it.openTime, it.closeTime, it.latitude, it.longitude)
                     }
+                    automaticBays = wash?.automaticBays ?: 0
                     _washInfo.value = wash?.let { "${it.automaticBays} automatic wash bays" }
                     _carWashServiceNames.value = autoWashDao?.getServiceNamesByAutoWashId(carWashId).orEmpty()
                     _availableServices.value = autoWashServiceDao?.getServicesByAutoWashId(carWashId).orEmpty().map {
@@ -102,6 +129,7 @@ class CarWashDetailViewModel(
                     }
                 }
             }
+            refreshBays()
             val carList = carDao.getCarsByCustomerId(customerUid)
             _customerCar.value = carList.firstOrNull()
 
@@ -193,6 +221,7 @@ class CarWashDetailViewModel(
 
             val slots = mutableListOf<Long>()
             val durationMillis = durationMinutes * 60 * 1000L
+            val earliestStart = System.currentTimeMillis() + minimumLeadMillis()
 
             for (hour in startHour until endHour) {
                 for (minute in listOf(0, 15, 30, 45)) {
@@ -207,20 +236,79 @@ class CarWashDetailViewModel(
                     val slotStart = slotCal.timeInMillis
                     val slotEnd = slotStart + durationMillis
 
-                    val availableEmployees = appointmentDao.getAvailableEmployees(carWashId, slotStart, slotEnd)
-                    if (availableEmployees.isNotEmpty()) {
-                        slots.add(slotStart)
-                    }
+                    if (slotStart < earliestStart) continue
+                    if (isSlotAvailable(carWashId, slotStart, slotEnd)) slots.add(slotStart)
                 }
             }
 
             if (request != slotRequest) return@launch
             if (slots.isEmpty()) {
-                _errorMessage.value = "No available slots in this period."
+                val noEmployees = _washType.value == WashType.NORMAL && appointmentDao.countEmployees(carWashId) == 0
+                _errorMessage.value = if (noEmployees)
+                    "This car wash has no employees registered yet, so it can't take bookings. Please try again later."
+                else if (_washType.value == WashType.SELF)
+                    "No free premium bay in this period. Self-service bays must be booked at least 1 hour ahead."
+                else "No available slots in this period."
             } else {
                 _availableSlots.value = slots
             }
         }
+    }
+
+    /** Self-service premium bays must be booked at least one hour ahead; others just in the future. */
+    private fun minimumLeadMillis(): Long = if (_washType.value == WashType.SELF) 60 * 60_000L else 0L
+
+    private suspend fun isSlotAvailable(carWashId: Int, start: Long, end: Long): Boolean =
+        if (_washType.value == WashType.NORMAL) {
+            appointmentDao.getAvailableEmployees(carWashId, start, end).isNotEmpty()
+        } else {
+            freeBay(start, end) != null
+        }
+
+    /** First bookable bay (1-based within premium/automatic bays) that is free for the whole interval. */
+    private suspend fun freeBay(start: Long, end: Long): Int? {
+        val taken = appointmentDao.getBookedBays(_washType.value.washKey(washId), start, end).toSet()
+        return (1..bookableBays).firstOrNull { it !in taken }
+    }
+
+    private suspend fun confirmBayBooking(
+        context: Context,
+        customerId: String,
+        serviceIds: List<Int>,
+        licensePlate: String,
+        startTime: Long,
+        durationMinutes: Int
+    ) {
+        val endTime = startTime + durationMinutes * 60_000L
+        if (startTime < System.currentTimeMillis() + minimumLeadMillis()) {
+            _errorMessage.value = "Self-service bays must be booked at least 1 hour ahead."
+            return
+        }
+        val bay = freeBay(startTime, endTime)
+        if (bay == null) {
+            _errorMessage.value = "That bay was just taken. Please refresh slots."
+            return
+        }
+        appointmentDao.insert(
+            Appointment(
+                appointmentId = UUID.randomUUID().toString(),
+                customerId = customerId,
+                carWashId = _washType.value.washKey(washId),
+                employeeId = null,
+                serviceIds = serviceIds,
+                licensePlate = licensePlate,
+                startTime = startTime,
+                endTime = endTime,
+                status = "CONFIRMED",
+                bayNumber = bay
+            )
+        )
+        context.getSharedPreferences("WashYourCarPrefs", Context.MODE_PRIVATE).edit()
+            .putString("last_booked_wash_name", _carWash.value?.name ?: "Car wash")
+            .putLong("last_booked_time", System.currentTimeMillis())
+            .apply()
+        refreshBays()
+        _isSuccess.value = true
     }
 
     fun confirmAppointment(
@@ -278,6 +366,10 @@ class CarWashDetailViewModel(
         durationMinutes: Int
     ) {
         viewModelScope.launch {
+            if (_washType.value != WashType.NORMAL) {
+                confirmBayBooking(context, customerId, serviceIds, licensePlate, startTime, durationMinutes)
+                return@launch
+            }
             val endTime = startTime + (durationMinutes * 60 * 1000L)
 
             val availableEmployees = appointmentDao.getAvailableEmployees(carWashId, startTime, endTime)

@@ -16,11 +16,12 @@ import com.example.washyourcar.data.entities.Owner
 import kotlinx.coroutines.CancellationException
 
 @Composable
-fun OwnerBottomBar(selectedRoute: String, onNavigate: (String) -> Unit) {
+fun OwnerBottomBar(selectedRoute: String, onNavigate: (String) -> Unit, showActivity: Boolean = true) {
     NavigationBar {
-        listOf(
+        listOfNotNull(
             Triple("owner_home", "Overview", Icons.Default.Home),
-            Triple("employee_activity", "Activity", Icons.Default.Groups),
+            // Employee activity only exists for classic washes; self-service/automatic have no employees.
+            if (showActivity) Triple("employee_activity", "Activity", Icons.Default.Groups) else null,
             Triple("car_wash_monitoring", "Car wash", Icons.Default.LocalCarWash),
             Triple("manage_account", "Account", Icons.Default.Person)
         ).forEach { (route, label, icon) ->

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,6 +39,23 @@ fun RegisterWashDetailsScreen(
     var premiumBays by remember { mutableStateOf("") }
     var automaticBays by remember { mutableStateOf("") }
     var localErrorMessage by remember { mutableStateOf<String?>(null) }
+    var picked by remember { mutableStateOf<PickedLocation?>(null) }
+    var showMap by remember { mutableStateOf(false) }
+
+    if (showMap) {
+        MapPickerDialog(
+            initialLatitude = picked?.latitude,
+            initialLongitude = picked?.longitude,
+            onDismiss = { showMap = false },
+            onPicked = { location ->
+                picked = location
+                // Pre-fill from the map, but don't overwrite what the owner already typed.
+                if (address.isBlank()) location.address?.let { address = it }
+                if (city.isBlank()) location.city?.let { city = it }
+                showMap = false
+            }
+        )
+    }
 
     val authState by viewModel.authState.collectAsState()
     LaunchedEffect(Unit) { viewModel.clearError() }
@@ -95,6 +113,11 @@ fun RegisterWashDetailsScreen(
             }
 
             AuthTextField(label = "Car Wash Name", value = washName, onValueChange = { washName = it })
+            OutlinedButton(onClick = { showMap = true }, modifier = Modifier.fillMaxWidth()) {
+                Icon(androidx.compose.material.icons.Icons.Default.Place, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(picked?.let { "Location set · change on map" } ?: "Place your car wash on the map")
+            }
             AuthTextField(label = "Address", value = address, onValueChange = { address = it })
             AuthTextField(label = "City", value = city, onValueChange = { city = it })
             AuthTextField(label = "Phone Number", value = phone, onValueChange = { phone = it })
@@ -228,6 +251,8 @@ fun RegisterWashDetailsScreen(
                         normalBays = normal,
                         premiumBays = premium,
                         automaticBays = automatic,
+                        latitude = picked?.latitude,
+                        longitude = picked?.longitude,
                         onSuccess = { washId -> onContinue(washType, washId) }
                     )
                 }

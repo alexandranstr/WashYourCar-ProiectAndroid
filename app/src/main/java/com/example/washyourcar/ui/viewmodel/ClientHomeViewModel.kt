@@ -50,6 +50,16 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
     private val _carWashRatings = MutableStateFlow<Map<String, Pair<Float, Int>>>(emptyMap())
     val carWashRatings: StateFlow<Map<String, Pair<Float, Int>>> = _carWashRatings.asStateFlow()
 
+    /** Bay bookings running right now, grouped by wash key (for the availability line on each card). */
+    private val _runningBookings = MutableStateFlow<Map<Int, List<Appointment>>>(emptyMap())
+    val runningBookings: StateFlow<Map<Int, List<Appointment>>> = _runningBookings.asStateFlow()
+
+    fun refreshAvailability() {
+        viewModelScope.launch {
+            _runningBookings.value = appointmentDao.getRunningBookings(System.currentTimeMillis()).groupBy { it.carWashId }
+        }
+    }
+
     private val _currentCustomer = MutableStateFlow<Customer?>(null)
     val currentCustomer: StateFlow<Customer?> = _currentCustomer.asStateFlow()
 
@@ -144,6 +154,7 @@ class ClientHomeViewModel(application: Application) : AndroidViewModel(applicati
 
     fun refreshRatings() {
         if (_washes.value.isNotEmpty()) loadRatings(_washes.value)
+        refreshAvailability()
     }
 
     fun loadCustomerData(firebaseUid: String) {

@@ -14,5 +14,7 @@ data class CarWash(
     val rating: Float,
     val accessCode: String,
     val openTime: Long,
-    val closeTime: Long
+    val closeTime: Long,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )

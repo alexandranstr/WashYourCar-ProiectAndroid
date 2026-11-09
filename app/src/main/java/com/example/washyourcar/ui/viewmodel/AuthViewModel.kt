@@ -190,6 +190,8 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         normalBays: Int,
         premiumBays: Int,
         automaticBays: Int,
+        latitude: Double? = null,
+        longitude: Double? = null,
         onSuccess: (washId: Int) -> Unit
     ) {
         if (washName.isBlank() || address.isBlank() || city.isBlank() || phone.isBlank()) {
@@ -224,7 +226,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                                 rating = 0f,
                                 accessCode = accessCode,
                                 openTime = openTime,
-                                closeTime = closeTime
+                                closeTime = closeTime,
+                                latitude = latitude,
+                                longitude = longitude
                             )
                         )
                         id
@@ -243,7 +247,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                                 rating = 0f,
                                 openTime = openTime,
                                 closeTime = closeTime,
-                                automaticBays = automaticBays
+                                automaticBays = automaticBays,
+                                latitude = latitude,
+                                longitude = longitude
                             )
                         )
                         id
@@ -263,7 +269,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                                 openTime = openTime,
                                 closeTime = closeTime,
                                 premiumSelfWashBays = premiumBays,
-                                normalSelfWashBays = normalBays
+                                normalSelfWashBays = normalBays,
+                                latitude = latitude,
+                                longitude = longitude
                             )
                         )
                         id

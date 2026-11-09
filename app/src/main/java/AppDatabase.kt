@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
         AutoWashService::class,
         LoyaltyCard::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

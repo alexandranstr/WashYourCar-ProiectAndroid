@@ -97,6 +97,21 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
             }
         }
 
+        // Type of the logged-in owner's wash (null until known / not an owner). Self-service and
+        // automatic washes have no employees, so their owners don't get the Activity tab.
+        var ownerWashType by remember { mutableStateOf<WashType?>(null) }
+        val ownerHasEmployees = ownerWashType == null || ownerWashType == WashType.NORMAL
+        val refreshOwnerWashType: suspend () -> Unit = {
+            val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+            ownerWashType = when {
+                uid == null -> null
+                database.carWashDao().getCarWashByOwnerId(uid) != null -> WashType.NORMAL
+                database.selfWashDao().getSelfWashByOwnerId(uid) != null -> WashType.SELF
+                database.autoWashDao().getAutoWashByOwnerId(uid) != null -> WashType.AUTOMATIC
+                else -> null
+            }
+        }
+
         // null = still checking who is logged in. The NavHost is only created AFTER we know the
         // start destination, because changing startDestination later does NOT move the user.
         var startDestination by remember { mutableStateOf<String?>(null) }
@@ -248,6 +263,7 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                 }
 
                 composable(Screen.OwnerHome.route) {
+                    LaunchedEffect(Unit) { refreshOwnerWashType() }
                     val currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
                     val ownerHomeViewModel: com.example.washyourcar.ui.viewmodel.OwnerHomeViewModel = viewModel(
@@ -262,7 +278,8 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                                     carWashServiceDao = database.carWashServiceDao(),
                                     autoWashServiceDao = database.autoWashServiceDao(),
                                     selfWashServiceDao = database.selfWashServiceDao(),
-                                    reviewDao = database.reviewDao()
+                                    reviewDao = database.reviewDao(),
+                                    appointmentDao = database.appointmentDao()
                                 ) as T
                             }
                         }
@@ -279,14 +296,17 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                         onNavigateToEmployeeActivity = { navigateOwnerTab(Screen.EmployeeActivity.route) },
                         onNavigateToCarWashMonitoring = { navigateOwnerTab(Screen.CarWashMonitoring.route) },
                         onNavigateToManageAccount = { navigateOwnerTab(Screen.ManageAccount.route) },
-                        bottomBar = { OwnerBottomBar(Screen.OwnerHome.route, navigateOwnerTab) },
+                        bottomBar = { OwnerBottomBar(Screen.OwnerHome.route, navigateOwnerTab, showActivity = ownerHasEmployees) },
                         viewModel = ownerHomeViewModel,
-                        onNavigateToSubscriptions = { navController.navigate(Screen.OwnerSubscriptions.route) }
+                        onNavigateToSubscriptions = { navController.navigate(Screen.OwnerSubscriptions.route) },
+                        onSetupCarWash = { navController.navigate(Screen.RegisterWashDetails.route) }
                     )
                 }
 
                 composable(Screen.OwnerSubscriptions.route) {
+                    LaunchedEffect(Unit) { if (ownerWashType == null) refreshOwnerWashType() }
                     com.example.washyourcar.ui.screens.OwnerSubscriptionsScreen(
+                        washType = ownerWashType,
                         onBack = { navController.popBackStack() }
                     )
                 }
@@ -312,7 +332,7 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
 
                     OwnerEmployeeActivityScreen(
                         onBack = { navController.popBackStack() },
-                        bottomBar = { OwnerBottomBar(Screen.EmployeeActivity.route, navigateOwnerTab) },
+                        bottomBar = { OwnerBottomBar(Screen.EmployeeActivity.route, navigateOwnerTab, showActivity = ownerHasEmployees) },
                         viewModel = activityViewModel
                     )
                 }
@@ -342,7 +362,7 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
 
                     OwnerCarWashMonitoringScreen(
                         onBack = { navController.popBackStack() },
-                        bottomBar = { OwnerBottomBar(Screen.CarWashMonitoring.route, navigateOwnerTab) },
+                        bottomBar = { OwnerBottomBar(Screen.CarWashMonitoring.route, navigateOwnerTab, showActivity = ownerHasEmployees) },
                         viewModel = monitoringViewModel
                     )
                 }
@@ -359,7 +379,7 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                                 popUpTo(Screen.OwnerHome.route) { inclusive = true }
                             }
                         },
-                        bottomBar = { OwnerBottomBar(Screen.ManageAccount.route, navigateOwnerTab) }
+                        bottomBar = { OwnerBottomBar(Screen.ManageAccount.route, navigateOwnerTab, showActivity = ownerHasEmployees) }
                     )
                 }
 

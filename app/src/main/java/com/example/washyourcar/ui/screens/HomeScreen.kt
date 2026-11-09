@@ -41,6 +41,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.washyourcar.R
 import com.example.washyourcar.data.entities.WashType
+import com.example.washyourcar.data.entities.washKey
 import com.example.washyourcar.models.WashListItem
 import com.example.washyourcar.ui.viewmodel.ClientHomeViewModel
 import java.text.SimpleDateFormat
@@ -70,6 +71,13 @@ fun HomeScreen(
     val customerCar by viewModel.customerCar.collectAsState()
     val activeAppointment by viewModel.activeAppointment.collectAsState()
     val carWashRatings by viewModel.carWashRatings.collectAsState()
+    val runningBookings by viewModel.runningBookings.collectAsState()
+    // Ticks so the simulated queues on the cards stay current.
+    var nowTick by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    RefreshEvery {
+        nowTick = System.currentTimeMillis()
+        viewModel.refreshAvailability()
+    }
     var filterBoxVisible by remember { mutableStateOf(false) }
     var showCancelConfirmationDialog by remember { mutableStateOf(false) }
 
@@ -461,10 +469,17 @@ fun HomeScreen(
                     ) {
                         items(washes, key = { it.key }) { wash ->
                             val ratingInfo = carWashRatings[wash.key]
+                            val washKey = wash.type.washKey(wash.id)
+                            val bays = if (wash.type == WashType.NORMAL) emptyList() else
+                                com.example.washyourcar.models.BayQueueSimulator.statuses(
+                                    washKey, wash.normalBays, wash.premiumBays, wash.automaticBays,
+                                    runningBookings[washKey].orEmpty(), nowTick
+                                )
                             CarWashCard(
                                 wash = wash,
                                 rating = ratingInfo?.first,
                                 reviewCount = ratingInfo?.second ?: 0,
+                                bayStatuses = bays,
                                 onClick = { onWashClick(wash.type, wash.id) }
                             )
                         }
@@ -477,7 +492,13 @@ fun HomeScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CarWashCard(wash: WashListItem, rating: Float?, reviewCount: Int, onClick: () -> Unit) {
+fun CarWashCard(
+    wash: WashListItem,
+    rating: Float?,
+    reviewCount: Int,
+    bayStatuses: List<com.example.washyourcar.models.BayStatus> = emptyList(),
+    onClick: () -> Unit
+) {
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(18.dp),
@@ -523,6 +544,7 @@ fun CarWashCard(wash: WashListItem, rating: Float?, reviewCount: Int, onClick: (
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f)
                     )
+                    NavigateToWashButton(wash.latitude, wash.longitude, "${wash.address}, ${wash.city}")
 
                     if (rating != null && reviewCount > 0) {
                         Row(
@@ -569,6 +591,9 @@ fun CarWashCard(wash: WashListItem, rating: Float?, reviewCount: Int, onClick: (
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )
+
+                // Self-service / automatic: free bays now, or how long until you can wash.
+                AvailabilityLine(bayStatuses, Modifier.padding(top = 4.dp))
             }
         }
     }

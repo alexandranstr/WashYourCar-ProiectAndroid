@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.washyourcar.data.entities.WashType
 
 enum class BillingPeriod(val label: String, val suffix: String) {
     MONTHLY("Monthly", "/ month"),
@@ -42,39 +43,59 @@ data class SubscriptionPlan(
     fun priceFor(period: BillingPeriod) = if (period == BillingPeriod.MONTHLY) monthlyPrice else yearlyPrice
 }
 
-// Test prices (RON) – UI only, not connected to Stripe yet.
-val testSubscriptionPlans = listOf(
-    SubscriptionPlan(
-        id = "classic_wash",
-        name = "Classic Wash",
-        description = "Hand wash by our staff, interior & exterior.",
-        features = listOf("Up to 4 washes / month", "Interior vacuum", "Priority booking"),
-        monthlyPrice = 149.99,
-        yearlyPrice = 1499.99
+// Test prices (RON) – UI only, not connected to Stripe yet. Each wash type has a Normal and a Premium plan.
+val testSubscriptionPlans: Map<WashType, List<SubscriptionPlan>> = mapOf(
+    WashType.NORMAL to listOf(
+        SubscriptionPlan(
+            id = "classic_normal", name = "Classic – Normal",
+            description = "List your classic hand-wash station in the app.",
+            features = listOf("Online appointments", "Up to 5 employees", "Reviews & ratings"),
+            monthlyPrice = 149.99, yearlyPrice = 1499.99
+        ),
+        SubscriptionPlan(
+            id = "classic_premium", name = "Classic – Premium",
+            description = "Everything in Normal, for bigger teams.",
+            features = listOf("Unlimited employees", "Featured in search", "Employee activity reports"),
+            monthlyPrice = 249.99, yearlyPrice = 2499.99
+        )
     ),
-    SubscriptionPlan(
-        id = "self_wash",
-        name = "Self Wash",
-        description = "Access to self-service wash bays.",
-        features = listOf("Unlimited bay access", "Free foam & wax", "Valid at all bays"),
-        monthlyPrice = 79.99,
-        yearlyPrice = 799.99
+    WashType.SELF to listOf(
+        SubscriptionPlan(
+            id = "self_normal", name = "Self-service – Normal",
+            description = "List your self-service bays in the app.",
+            features = listOf("Live queue per bay", "Up to 6 bays", "Reviews & ratings"),
+            monthlyPrice = 79.99, yearlyPrice = 799.99
+        ),
+        SubscriptionPlan(
+            id = "self_premium", name = "Self-service – Premium",
+            description = "Everything in Normal, plus bookable premium bays.",
+            features = listOf("Premium bay bookings", "Unlimited bays", "Featured in search"),
+            monthlyPrice = 129.99, yearlyPrice = 1299.99
+        )
     ),
-    SubscriptionPlan(
-        id = "automatic_wash",
-        name = "Automatic Wash",
-        description = "Drive-through automatic wash tunnel.",
-        features = listOf("Unlimited tunnel washes", "Underbody rinse", "Quick dry"),
-        monthlyPrice = 119.99,
-        yearlyPrice = 1199.99
+    WashType.AUTOMATIC to listOf(
+        SubscriptionPlan(
+            id = "auto_normal", name = "Automatic – Normal",
+            description = "List your automatic wash in the app.",
+            features = listOf("Live queue per bay", "Online slot bookings", "Reviews & ratings"),
+            monthlyPrice = 119.99, yearlyPrice = 1199.99
+        ),
+        SubscriptionPlan(
+            id = "auto_premium", name = "Automatic – Premium",
+            description = "Everything in Normal, for busy tunnels.",
+            features = listOf("Unlimited bays", "Featured in search", "Booking reports"),
+            monthlyPrice = 189.99, yearlyPrice = 1899.99
+        )
     )
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OwnerSubscriptionsScreen(
+    washType: WashType?,
     onBack: () -> Unit,
-    plans: List<SubscriptionPlan> = testSubscriptionPlans,
+    // Only the plans for the owner's own wash type are shown.
+    plans: List<SubscriptionPlan> = washType?.let { testSubscriptionPlans[it] }.orEmpty(),
     // Will be replaced with the Stripe checkout flow later.
     onSubscribe: (SubscriptionPlan, BillingPeriod) -> Unit = { _, _ -> }
 ) {
@@ -103,6 +124,14 @@ fun OwnerSubscriptionsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text("Choose a plan", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                when (washType) {
+                    null -> "Set up your car wash first to see the plans for it."
+                    else -> "Plans for your ${washType.label.lowercase()} car wash"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 BillingPeriod.entries.forEachIndexed { index, p ->

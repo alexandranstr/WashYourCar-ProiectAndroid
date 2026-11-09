@@ -14,4 +14,6 @@ data class Appointment(
     val startTime: Long,
     val endTime: Long,
     val status: String,
+    // Bay booked at self-service (premium) or automatic washes; null for classic (employee) bookings.
+    val bayNumber: Int? = null,
 )

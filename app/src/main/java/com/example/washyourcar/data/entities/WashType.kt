@@ -15,3 +15,6 @@ fun WashType.reviewKey(washId: Int): Int = when (this) {
     WashType.SELF -> 100_000 + washId
     WashType.AUTOMATIC -> 200_000 + washId
 }
+
+/** Same offset scheme, used for bookings of self-service and automatic bays. */
+fun WashType.washKey(washId: Int): Int = reviewKey(washId)

@@ -59,7 +59,8 @@ fun OwnerHomeScreen(
     onNavigateToManageAccount: () -> Unit,
     viewModel: OwnerHomeViewModel,
     bottomBar: @Composable () -> Unit = {},
-    onNavigateToSubscriptions: () -> Unit = {}
+    onNavigateToSubscriptions: () -> Unit = {},
+    onSetupCarWash: () -> Unit = {}
 ) {
     val currentOwner by viewModel.currentOwner.collectAsState()
     val carWash by viewModel.carWash.collectAsState()
@@ -71,6 +72,10 @@ fun OwnerHomeScreen(
     val autoWash by viewModel.autoWash.collectAsState()
     val selfServices by viewModel.selfServices.collectAsState()
     val autoServices by viewModel.autoServices.collectAsState()
+    val bayStatuses by viewModel.bayStatuses.collectAsState()
+    val bookings by viewModel.bookings.collectAsState()
+    val employeeCount by viewModel.employeeCount.collectAsState()
+    RefreshEvery { viewModel.refreshBays() }
 
     LaunchedEffect(firebaseUid) {
         viewModel.initOwner(firebaseUid)
@@ -188,6 +193,15 @@ fun OwnerHomeScreen(
                                         fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
                                     )
+                                    if (employeeCount == 0) {
+                                        // Classic bookings are assigned to employees, so clients see no slots until one joins.
+                                        Text(
+                                            text = "No employees yet – clients can't book until an employee registers with this access code.",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    }
                                 }
                             } else {
                                 Text(
@@ -195,6 +209,13 @@ fun OwnerHomeScreen(
                                     fontSize = 14.sp,
                                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
                                 )
+                                androidx.compose.material3.Button(
+                                    onClick = onSetupCarWash,
+                                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.onPrimary,
+                                        contentColor = MaterialTheme.colorScheme.primary
+                                    )
+                                ) { Text("Set up car wash") }
                             }
 
                             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.4f))
@@ -281,15 +302,32 @@ fun OwnerHomeScreen(
                                 }
                             }
                         } else {
-                            LazyColumn(
+                            // Plain Column: a LazyColumn inside this scrolling screen would crash.
+                            Column(
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                ownerLazyItems(reviews) { review ->
-                                    OwnerReviewCard(review = review)
-                                }
+                                reviews.forEach { review -> OwnerReviewCard(review = review) }
                             }
                         }
+                    }
+                }
+            }
+
+            // Self-service and automatic washes: live bays/queues and upcoming bookings.
+            if (selfWash != null || autoWash != null) {
+                Card(shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth()) {
+                    BaysSection(bayStatuses, title = "Bays & queues", modifier = Modifier.padding(20.dp))
+                }
+                val bookableBays = selfWash?.premiumSelfWashBays ?: autoWash?.automaticBays ?: 0
+                if (bookableBays > 0) {
+                    Card(shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth()) {
+                        BookingsList(
+                            bookings = bookings,
+                            // Premium self-service bays are numbered after the normal bays on screen.
+                            bayOffset = selfWash?.normalSelfWashBays ?: 0,
+                            modifier = Modifier.padding(20.dp)
+                        )
                     }
                 }
             }
