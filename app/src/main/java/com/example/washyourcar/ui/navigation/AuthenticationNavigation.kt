@@ -30,6 +30,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.washyourcar.data.entities.WashType
+import com.example.washyourcar.models.OwnerWashRef
+import com.example.washyourcar.models.ownerWashes
 import com.example.washyourcar.ui.screens.CarWashDetailScreen
 import com.example.washyourcar.ui.screens.EmployeeHomeScreen
 import com.example.washyourcar.ui.screens.HomeScreen
@@ -97,18 +99,24 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
             }
         }
 
-        // Type of the logged-in owner's wash (null until known / not an owner). Self-service and
-        // automatic washes have no employees, so their owners don't get the Activity tab.
-        var ownerWashType by remember { mutableStateOf<WashType?>(null) }
+        // An owner can run several washes; every owner tab works on the selected one.
+        var ownerWashes by remember { mutableStateOf<List<OwnerWashRef>>(emptyList()) }
+        var selectedWash by remember { mutableStateOf<OwnerWashRef?>(null) }
+        val ownerWashType = selectedWash?.type
+        // Self-service and automatic washes have no employees, so they don't get the Activity tab.
         val ownerHasEmployees = ownerWashType == null || ownerWashType == WashType.NORMAL
         val refreshOwnerWashType: suspend () -> Unit = {
             val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
-            ownerWashType = when {
-                uid == null -> null
-                database.carWashDao().getCarWashByOwnerId(uid) != null -> WashType.NORMAL
-                database.selfWashDao().getSelfWashByOwnerId(uid) != null -> WashType.SELF
-                database.autoWashDao().getAutoWashByOwnerId(uid) != null -> WashType.AUTOMATIC
-                else -> null
+            ownerWashes = if (uid == null) emptyList() else database.ownerWashes(uid)
+            // Keep the current selection (refreshing its name), else pick the first wash.
+            selectedWash = ownerWashes.firstOrNull { it.sameWash(selectedWash) } ?: ownerWashes.firstOrNull()
+        }
+        val goToOwnerHome: () -> Unit = {
+            // Coming from "Add car wash" OwnerHome is already on the stack; after sign-up it isn't.
+            if (!navController.popBackStack(Screen.OwnerHome.route, false)) {
+                navController.navigate(Screen.OwnerHome.route) {
+                    popUpTo(Screen.RegisterWashDetails.route) { inclusive = true }
+                }
             }
         }
 
@@ -118,6 +126,8 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
 
         LaunchedEffect(Unit) {
             startDestination = try {
+                // Restore data from the cloud first (new device / wiped local DB), but don't hang if offline.
+                kotlinx.coroutines.withTimeoutOrNull(8_000) { com.example.washyourcar.data.CloudSync.pullAll() }
                 when (authViewModel.getUserRole()) {
                     is AuthViewModel.UserRole.Client -> Screen.Home.route
                     is AuthViewModel.UserRole.Owner -> Screen.OwnerHome.route
@@ -229,6 +239,8 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                         isDarkTheme = isDarkTheme,
                         onThemeToggle = { isDarkTheme = !isDarkTheme },
                         onContinue = { type, washId ->
+                            // Select the new wash so the owner lands on it.
+                            selectedWash = OwnerWashRef(type, washId, "")
                             navController.navigate("register_wash_services/${type.name}/$washId")
                         },
                         onBackClick = { navController.popBackStack() }
@@ -253,11 +265,7 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                         washId = washId,
                         isDarkTheme = isDarkTheme,
                         onThemeToggle = { isDarkTheme = !isDarkTheme },
-                        onRegisterSuccess = {
-                            navController.navigate(Screen.OwnerHome.route) {
-                                popUpTo(Screen.RegisterWashDetails.route) { inclusive = true }
-                            }
-                        },
+                        onRegisterSuccess = goToOwnerHome,
                         onBackClick = { navController.popBackStack() }
                     )
                 }
@@ -299,7 +307,10 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                         bottomBar = { OwnerBottomBar(Screen.OwnerHome.route, navigateOwnerTab, showActivity = ownerHasEmployees) },
                         viewModel = ownerHomeViewModel,
                         onNavigateToSubscriptions = { navController.navigate(Screen.OwnerSubscriptions.route) },
-                        onSetupCarWash = { navController.navigate(Screen.RegisterWashDetails.route) }
+                        onSetupCarWash = { navController.navigate(Screen.RegisterWashDetails.route) },
+                        ownerWashes = ownerWashes,
+                        selectedWash = selectedWash,
+                        onSelectWash = { selectedWash = it }
                     )
                 }
 
@@ -307,6 +318,8 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                     LaunchedEffect(Unit) { if (ownerWashType == null) refreshOwnerWashType() }
                     com.example.washyourcar.ui.screens.OwnerSubscriptionsScreen(
                         washType = ownerWashType,
+                        washKey = selectedWash?.let { "${it.type.name}-${it.id}" },
+                        washName = selectedWash?.name,
                         onBack = { navController.popBackStack() }
                     )
                 }
@@ -326,8 +339,8 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                         }
                     )
 
-                    LaunchedEffect(currentUid) {
-                        activityViewModel.initOwner(currentUid)
+                    LaunchedEffect(currentUid, selectedWash) {
+                        activityViewModel.initOwner(currentUid, selectedWash)
                     }
 
                     OwnerEmployeeActivityScreen(
@@ -356,8 +369,8 @@ fun AuthenticationNavigation(authViewModel: AuthViewModel) {
                         }
                     )
 
-                    LaunchedEffect(currentUid) {
-                        monitoringViewModel.initOwner(currentUid)
+                    LaunchedEffect(currentUid, selectedWash) {
+                        monitoringViewModel.initOwner(currentUid, selectedWash)
                     }
 
                     OwnerCarWashMonitoringScreen(

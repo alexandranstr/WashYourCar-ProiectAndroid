@@ -46,6 +46,9 @@ interface CarWashDao {
     @Query("SELECT * FROM car_washes WHERE ownerId = :ownerId")
     suspend fun getCarWashByOwnerId(ownerId: String): CarWash?
 
+    @Query("SELECT * FROM car_washes WHERE ownerId = :ownerId ORDER BY carWashId")
+    suspend fun getCarWashesByOwnerId(ownerId: String): List<CarWash>
+
     @Query("""
         SELECT s.name FROM car_wash_services cws
         INNER JOIN services s ON cws.serviceId = s.serviceId

@@ -94,14 +94,48 @@ val testSubscriptionPlans: Map<WashType, List<SubscriptionPlan>> = mapOf(
 fun OwnerSubscriptionsScreen(
     washType: WashType?,
     onBack: () -> Unit,
+    /** The owner's selected wash; the active plan is stored per wash. */
+    washKey: String? = null,
+    washName: String? = null,
     // Only the plans for the owner's own wash type are shown.
     plans: List<SubscriptionPlan> = washType?.let { testSubscriptionPlans[it] }.orEmpty(),
-    // Will be replaced with the Stripe checkout flow later.
     onSubscribe: (SubscriptionPlan, BillingPeriod) -> Unit = { _, _ -> }
 ) {
     var period by remember { mutableStateOf(BillingPeriod.MONTHLY) }
     var selectedPlanId by remember { mutableStateOf<String?>(null) }
     var confirmPlan by remember { mutableStateOf<SubscriptionPlan?>(null) }
+
+    // Active plan per wash, saved on the device after a successful (test) Google Pay payment.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = remember { context.getSharedPreferences("owner_subscriptions", android.content.Context.MODE_PRIVATE) }
+    var activePlan by remember(washKey) { mutableStateOf(washKey?.let { prefs.getString(it, null) }) } // "planId|PERIOD|card"
+    var paymentMessage by remember { mutableStateOf<String?>(null) }
+
+    val googlePay = com.example.washyourcar.payments.rememberGooglePay { result ->
+        val plan = confirmPlan
+        when (result) {
+            is com.example.washyourcar.payments.GooglePay.Result.Success -> if (plan != null) {
+                val value = "${plan.id}|${period.name}|${result.cardDescription}"
+                washKey?.let { prefs.edit().putString(it, value).apply() }
+                activePlan = value
+                onSubscribe(plan, period)
+                paymentMessage = "Paid ${formatRon(plan.priceFor(period))} with ${result.cardDescription}.\n${plan.name} is now active (test payment)."
+                confirmPlan = null
+            }
+            com.example.washyourcar.payments.GooglePay.Result.Canceled -> Unit
+            is com.example.washyourcar.payments.GooglePay.Result.Error -> paymentMessage = "Payment failed: ${result.message}"
+        }
+    }
+
+    paymentMessage?.let { msg ->
+        AlertDialog(
+            onDismissRequest = { paymentMessage = null },
+            icon = { Icon(Icons.Default.CheckCircle, null) },
+            title = { Text(if (msg.startsWith("Payment failed")) "Payment failed" else "Payment successful") },
+            text = { Text(msg) },
+            confirmButton = { TextButton(onClick = { paymentMessage = null }) { Text("OK") } }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -127,7 +161,7 @@ fun OwnerSubscriptionsScreen(
             Text(
                 when (washType) {
                     null -> "Set up your car wash first to see the plans for it."
-                    else -> "Plans for your ${washType.label.lowercase()} car wash"
+                    else -> "Plans for ${washName?.takeIf { it.isNotBlank() } ?: "your car wash"} (${washType.label.lowercase()})"
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -144,17 +178,21 @@ fun OwnerSubscriptionsScreen(
             }
 
             plans.forEach { plan ->
+                val active = activePlan?.split("|")
                 SubscriptionPlanCard(
                     plan = plan,
                     period = period,
                     selected = selectedPlanId == plan.id,
                     onSelect = { selectedPlanId = plan.id },
-                    onSubscribe = { confirmPlan = plan }
+                    onSubscribe = { confirmPlan = plan },
+                    activeLabel = if (active?.getOrNull(0) == plan.id)
+                        "Active · ${BillingPeriod.entries.firstOrNull { it.name == active.getOrNull(1) }?.label ?: ""} · ${active.getOrNull(2).orEmpty()}"
+                    else null
                 )
             }
 
             Text(
-                "Test mode – payments are not processed yet.",
+                "Google Pay test mode – real Google Pay screen, no real money is charged.",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -167,14 +205,22 @@ fun OwnerSubscriptionsScreen(
             icon = { Icon(Icons.Default.Payment, null) },
             title = { Text("Confirm subscription") },
             text = {
-                Text("${plan.name} – ${formatRon(plan.priceFor(period))} ${period.suffix}\n\nStripe payment will be available soon.")
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("${plan.name} – ${formatRon(plan.priceFor(period))} ${period.suffix}")
+                    when (googlePay.available) {
+                        null -> Text("Checking Google Pay…", fontSize = 13.sp)
+                        false -> Text(
+                            "Google Pay isn't available on this device. Sign in to a Google account in the Play Store / Google Wallet and try again.",
+                            fontSize = 13.sp, color = MaterialTheme.colorScheme.error
+                        )
+                        true -> com.example.washyourcar.payments.GooglePayButton(
+                            onClick = { googlePay.pay(plan.priceFor(period), "${plan.name} (${period.label})") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
             },
-            confirmButton = {
-                Button(onClick = {
-                    onSubscribe(plan, period)
-                    confirmPlan = null
-                }) { Text("Pay") }
-            },
+            confirmButton = {},
             dismissButton = { TextButton(onClick = { confirmPlan = null }) { Text("Cancel") } }
         )
     }
@@ -186,7 +232,8 @@ private fun SubscriptionPlanCard(
     period: BillingPeriod,
     selected: Boolean,
     onSelect: () -> Unit,
-    onSubscribe: () -> Unit
+    onSubscribe: () -> Unit,
+    activeLabel: String? = null
 ) {
     Card(
         onClick = onSelect,
@@ -199,6 +246,9 @@ private fun SubscriptionPlanCard(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Icon(plan.icon, null, tint = MaterialTheme.colorScheme.primary)
                 Text(plan.name, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            }
+            activeLabel?.let {
+                Text(it, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.tertiary)
             }
             Text(plan.description, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(verticalAlignment = Alignment.Bottom) {
@@ -213,7 +263,7 @@ private fun SubscriptionPlanCard(
                 }
             }
             Button(onClick = onSubscribe, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                Text("Subscribe")
+                Text(if (activeLabel != null) "Renew" else "Subscribe")
             }
         }
     }

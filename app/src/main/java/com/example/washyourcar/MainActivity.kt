@@ -1,5 +1,6 @@
 package com.example.washyourcar
 
+import AppDatabase
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -16,6 +17,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Mirror local data to Cloud Firestore so it's permanent and shared across devices.
+        com.example.washyourcar.data.CloudSync.start(AppDatabase.getDatabase(applicationContext))
 
         setContent {
             WashYourCarTheme {

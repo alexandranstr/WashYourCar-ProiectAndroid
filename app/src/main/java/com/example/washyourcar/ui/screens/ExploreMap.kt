@@ -152,7 +152,7 @@ fun ExploreMapScreen(
     }
     val mapView = remember {
         MapView(context).apply {
-            setTileSource(EsriStreetMap)
+            applyGreyStyle()
             setMultiTouchControls(true)
             zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
             controller.setZoom(13.0)

@@ -56,6 +56,8 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun loyaltyCardDao(): LoyaltyCardDao
 
+    abstract fun syncDao(): SyncDao
+
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null

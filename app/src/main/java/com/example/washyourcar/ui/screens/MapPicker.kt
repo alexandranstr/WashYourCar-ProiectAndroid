@@ -38,14 +38,33 @@ internal val DefaultCenter = GeoPoint(45.6427, 25.5887) // Brașov
  * (tile.openstreetmap.org returns "403 Access blocked" for this app, so its tiles can't be used.)
  * Esri's URLs are .../tile/{z}/{y}/{x}, hence the custom URL builder.
  */
-internal val EsriStreetMap = object : OnlineTileSourceBase(
-    "EsriWorldStreetMap", 0, 19, 256, "",
-    arrayOf("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/"),
+private fun esriTiles(name: String, service: String, maxZoom: Int) = object : OnlineTileSourceBase(
+    name, 0, maxZoom, 256, "",
+    arrayOf("https://server.arcgisonline.com/ArcGIS/rest/services/$service/MapServer/tile/"),
     "Tiles © Esri — Sources: Esri, HERE, Garmin, OpenStreetMap contributors"
 ) {
     override fun getTileURLString(pMapTileIndex: Long): String =
         baseUrl + MapTileIndex.getZoom(pMapTileIndex) + "/" +
             MapTileIndex.getY(pMapTileIndex) + "/" + MapTileIndex.getX(pMapTileIndex)
+}
+
+internal val EsriStreetMap = esriTiles("EsriWorldStreetMap", "World_Street_Map", 19)
+
+// Grey & white "Light Gray Canvas": a label-free base plus a separate street-name layer on top.
+// Esri serves these up to zoom 16; osmdroid scales them up when zooming in further.
+private val EsriLightGrayBase = esriTiles("EsriLightGrayBase", "Canvas/World_Light_Gray_Base", 16)
+private val EsriLightGrayLabels = esriTiles("EsriLightGrayReference", "Canvas/World_Light_Gray_Reference", 16)
+
+/** Grey & white map style used by the client map and the location picker. */
+internal fun MapView.applyGreyStyle() {
+    setTileSource(EsriLightGrayBase)
+    val labels = org.osmdroid.views.overlay.TilesOverlay(
+        org.osmdroid.tileprovider.MapTileProviderBasic(context, EsriLightGrayLabels), context
+    ).apply {
+        loadingBackgroundColor = android.graphics.Color.TRANSPARENT
+        loadingLineColor = android.graphics.Color.TRANSPARENT
+    }
+    overlays.add(0, labels)
 }
 
 /**
@@ -74,7 +93,7 @@ fun MapPickerDialog(
 
     val mapView = remember {
         MapView(context).apply {
-            setTileSource(EsriStreetMap)
+            applyGreyStyle()
             setMultiTouchControls(true)
             controller.setZoom(if (initial != null) 17.0 else 13.0)
             controller.setCenter(initial ?: DefaultCenter)

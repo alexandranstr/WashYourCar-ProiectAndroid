@@ -90,19 +90,46 @@ fun LoyaltyCardSection(firebaseUid: String) {
         }
     }
 
-    if (showTopUp) {
-        TopUpDialog(
-            onDismiss = { showTopUp = false },
-            onConfirm = { amount ->
+    // Top-up is paid with Google Pay (TEST environment); the balance is only credited after success.
+    var pendingAmount by remember { mutableStateOf<Double?>(null) }
+    var paymentMessage by remember { mutableStateOf<String?>(null) }
+    val googlePay = com.example.washyourcar.payments.rememberGooglePay { result ->
+        val amount = pendingAmount
+        when (result) {
+            is com.example.washyourcar.payments.GooglePay.Result.Success -> if (amount != null) {
                 scope.launch { dao.topUp(firebaseUid, amount) }
+                paymentMessage = String.format("Added %.2f RON to your card, paid with %s (test payment).", amount, result.cardDescription)
                 showTopUp = false
             }
+            com.example.washyourcar.payments.GooglePay.Result.Canceled -> Unit
+            is com.example.washyourcar.payments.GooglePay.Result.Error -> paymentMessage = "Payment failed: ${result.message}"
+        }
+        pendingAmount = null
+    }
+
+    if (showTopUp) {
+        TopUpDialog(
+            googlePayAvailable = googlePay.available,
+            onDismiss = { showTopUp = false },
+            onConfirm = { amount ->
+                pendingAmount = amount
+                googlePay.pay(amount, "Loyalty card top-up")
+            }
+        )
+    }
+
+    paymentMessage?.let { msg ->
+        AlertDialog(
+            onDismissRequest = { paymentMessage = null },
+            title = { Text(if (msg.startsWith("Payment failed")) "Payment failed" else "Top-up successful") },
+            text = { Text(msg) },
+            confirmButton = { TextButton(onClick = { paymentMessage = null }) { Text("OK") } }
         )
     }
 }
 
 @Composable
-private fun TopUpDialog(onDismiss: () -> Unit, onConfirm: (Double) -> Unit) {
+private fun TopUpDialog(googlePayAvailable: Boolean?, onDismiss: () -> Unit, onConfirm: (Double) -> Unit) {
     var amountText by remember { mutableStateOf("") }
     val amount = amountText.replace(',', '.').toDoubleOrNull()
     val valid = amount != null && amount >= 10.0 && amount <= 2000.0
@@ -125,16 +152,26 @@ private fun TopUpDialog(onDismiss: () -> Unit, onConfirm: (Double) -> Unit) {
                     value = amountText,
                     onValueChange = { amountText = it.filter { c -> c.isDigit() || c == '.' || c == ',' } },
                     label = { Text("Amount (RON)") },
-                    supportingText = { Text("Between 10 and 2000 RON. Test mode – no real payment.") },
+                    supportingText = { Text("Between 10 and 2000 RON. Google Pay test mode – no real money.") },
                     isError = amountText.isNotEmpty() && !valid,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true
                 )
+                when (googlePayAvailable) {
+                    null -> Text("Checking Google Pay…")
+                    false -> Text(
+                        "Google Pay isn't available on this device. Sign in to a Google account and try again.",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    true -> com.example.washyourcar.payments.GooglePayButton(
+                        onClick = { amount?.let(onConfirm) },
+                        enabled = valid,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         },
-        confirmButton = {
-            Button(onClick = { amount?.let(onConfirm) }, enabled = valid) { Text("Pay") }
-        },
+        confirmButton = {},
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }

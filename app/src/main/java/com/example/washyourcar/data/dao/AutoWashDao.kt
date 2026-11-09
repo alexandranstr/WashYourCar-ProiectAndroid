@@ -38,6 +38,9 @@ interface AutoWashDao {
     @Query("SELECT * FROM auto_washes WHERE ownerId = :ownerId")
     suspend fun getAutoWashByOwnerId(ownerId: String): AutoWash?
 
+    @Query("SELECT * FROM auto_washes WHERE ownerId = :ownerId ORDER BY autoWashId")
+    suspend fun getAutoWashesByOwnerId(ownerId: String): List<AutoWash>
+
     @Query("""
         SELECT s.name FROM auto_wash_services aws
         INNER JOIN auto_services s ON aws.autoServiceId = s.autoServiceId

@@ -38,6 +38,9 @@ interface SelfWashDao {
     @Query("SELECT * FROM self_washes WHERE ownerId = :ownerId")
     suspend fun getSelfWashByOwnerId(ownerId: String): SelfWash?
 
+    @Query("SELECT * FROM self_washes WHERE ownerId = :ownerId ORDER BY selfWashId")
+    suspend fun getSelfWashesByOwnerId(ownerId: String): List<SelfWash>
+
     @Query("""
         SELECT s.name FROM self_wash_services sws
         INNER JOIN self_services s ON sws.selfServiceId = s.selfServiceId

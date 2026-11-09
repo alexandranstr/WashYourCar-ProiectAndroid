@@ -24,7 +24,9 @@ import kotlinx.coroutines.launch
 
 data class AuthState(
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    /** Neutral feedback, e.g. "Password reset email sent". */
+    val infoMessage: String? = null
 )
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
@@ -68,30 +70,102 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // ---------------- Auth helpers ----------------
+
+    /** Turns Firebase errors into messages a user can act on (Firebase's own text is vague). */
+    private fun friendlyAuthError(error: Exception): String = when {
+        error is com.google.firebase.FirebaseNetworkException -> "No internet connection. Check it and try again."
+        error is com.google.firebase.auth.FirebaseAuthException -> when (error.errorCode) {
+            // Newer Firebase projects return INVALID_CREDENTIAL for both a wrong password and an unknown email.
+            "ERROR_INVALID_CREDENTIAL", "ERROR_WRONG_PASSWORD", "ERROR_INVALID_LOGIN_CREDENTIALS" ->
+                "Wrong email or password. Check them, or tap \"Forgot password?\" to reset it."
+            "ERROR_USER_NOT_FOUND" -> "No account with this email. Sign up first."
+            "ERROR_INVALID_EMAIL" -> "That email address isn't valid."
+            "ERROR_EMAIL_ALREADY_IN_USE" -> "This email already has an account. Log in instead."
+            "ERROR_WEAK_PASSWORD" -> "Password is too weak – use at least 6 characters."
+            "ERROR_TOO_MANY_REQUESTS" -> "Too many attempts. Wait a few minutes and try again."
+            "ERROR_USER_DISABLED" -> "This account has been disabled."
+            else -> error.localizedMessage ?: "Sign-in failed."
+        }
+        error is com.google.firebase.FirebaseTooManyRequestsException -> "Too many attempts. Wait a few minutes and try again."
+        else -> error.localizedMessage ?: "Something went wrong."
+    }
+
+    /**
+     * Creates the Firebase account, or, if the email is already registered (e.g. a previous sign-up
+     * created the Firebase account but the profile was never saved on this device), signs in with the
+     * same password so the profile can be completed instead of leaving the user stuck.
+     */
+    private fun createOrRecoverAccount(email: String, password: String, onReady: (uid: String) -> Unit) {
+        auth.createUserWithEmailAndPassword(email, password)
+            .addOnSuccessListener { result -> result.user?.uid?.let(onReady) ?: fail("Could not create the account.") }
+            .addOnFailureListener { error ->
+                if (error is com.google.firebase.auth.FirebaseAuthUserCollisionException) {
+                    auth.signInWithEmailAndPassword(email, password)
+                        .addOnSuccessListener { result ->
+                            Log.d("Auth", "Email already registered; signed in to finish the profile")
+                            viewModelScope.launch {
+                                pullFromCloud()
+                                result.user?.uid?.let(onReady) ?: fail("Could not sign in.")
+                            }
+                        }
+                        .addOnFailureListener {
+                            fail("This email already has an account with a different password. Log in, or use \"Forgot password?\".")
+                        }
+                } else {
+                    Log.e("Auth", "Register error: ${error.message}")
+                    fail(friendlyAuthError(error))
+                }
+            }
+    }
+
+    /** Downloads the cloud copy into the local database; gives up after 8 s so login never hangs offline. */
+    private suspend fun pullFromCloud() {
+        kotlinx.coroutines.withTimeoutOrNull(8_000) { com.example.washyourcar.data.CloudSync.pullAll() }
+    }
+
+    private fun fail(message: String) {
+        _authState.value = AuthState(errorMessage = message)
+    }
+
+    /** Sends Firebase's password reset email. */
+    fun sendPasswordReset(email: String) {
+        val clean = email.trim()
+        if (clean.isBlank()) { fail("Enter your email first, then tap \"Forgot password?\"."); return }
+        _authState.value = AuthState(isLoading = true)
+        auth.sendPasswordResetEmail(clean)
+            .addOnSuccessListener { _authState.value = AuthState(infoMessage = "Password reset email sent to $clean. Check your inbox (and spam).") }
+            .addOnFailureListener { fail(friendlyAuthError(it)) }
+    }
+
     fun login(email: String, parola: String, onSuccess: () -> Unit) {
         _authState.value = AuthState(isLoading = true)
 
-        auth.signInWithEmailAndPassword(email, parola)
+        auth.signInWithEmailAndPassword(email.trim(), parola)
             .addOnSuccessListener {
                 Log.d("Auth", "Login succesfull")
-                _authState.value = AuthState()
-                onSuccess()
+                viewModelScope.launch {
+                    pullFromCloud() // restores this account's washes / profile on a new device
+                    _authState.value = AuthState()
+                    onSuccess()
+                }
             }
             .addOnFailureListener { error ->
                 Log.e("Auth", "Login error: ${error.message}")
-                _authState.value = AuthState(errorMessage = error.message)
+                fail(friendlyAuthError(error))
             }
     }
 
     fun loginClient(email: String, parola: String, onSuccess: () -> Unit) {
         _authState.value = AuthState(isLoading = true)
 
-        auth.signInWithEmailAndPassword(email, parola)
+        auth.signInWithEmailAndPassword(email.trim(), parola)
             .addOnSuccessListener { result ->
                 val firebaseUid = result.user?.uid
                 viewModelScope.launch {
                     try {
-                        val hasCustomerProfile = firebaseUid?.let { customerDao.getCustomersById(it) != null } == true
+                        pullFromCloud() // the profile may only exist in the cloud on this device
+                        val hasCustomerProfile =firebaseUid?.let { customerDao.getCustomersById(it) != null } == true
                         val hasRegisteredCar = firebaseUid?.let { carDao.getCarsByCustomerId(it).isNotEmpty() } == true
                         if (hasCustomerProfile && hasRegisteredCar) {
                             Log.d("Auth", "Client login successful with complete profile")
@@ -99,8 +173,11 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                             onSuccess()
                         } else {
                             auth.signOut()
+                            // Profiles are stored on each device (not in the cloud yet), so a valid account can
+                            // have no profile here. Signing up again with the same email + password restores it.
                             _authState.value = AuthState(
-                                errorMessage = "This client account does not have a complete profile. Please register again."
+                                errorMessage = "Your password is correct, but this device has no profile for this account. " +
+                                    "Tap \"Sign up\" and register again with the same email and password to restore it."
                             )
                         }
                     } catch (error: Exception) {
@@ -114,7 +191,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             }
             .addOnFailureListener { error ->
                 Log.e("Auth", "Client login error: ${error.message}")
-                _authState.value = AuthState(errorMessage = error.message)
+                fail(friendlyAuthError(error))
             }
     }
 
@@ -133,41 +210,27 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
         _authState.value = AuthState(isLoading = true)
 
-        auth.createUserWithEmailAndPassword(email, password)
-            .addOnSuccessListener { authResult ->
-                Log.d("Auth", "Owner account created in Firebase")
-
-                val firebaseUid = authResult.user?.uid
-
-                if (firebaseUid != null) {
-                    val noulOwner = Owner(
-                        firebaseUid = firebaseUid,
-                        firstName = firstName,
-                        lastName = lastName,
-                        email = email,
-                        phoneNumber = phone
-                    )
-
-                    viewModelScope.launch {
-                        try {
-                            ownerDao.insertOwner(noulOwner)
-                            Log.d("Room", "Owner saved to local database")
-
-                            _authState.value = AuthState()
-                            onSuccess()
-                        } catch (e: Exception) {
-                            Log.e("Room", "Error saving owner: ${e.message}")
-                            _authState.value = AuthState(
-                                errorMessage = "Database failed: ${e.localizedMessage}"
-                            )
-                        }
-                    }
+        createOrRecoverAccount(email.trim(), password) { firebaseUid ->
+            Log.d("Auth", "Owner account ready in Firebase")
+            val noulOwner = Owner(
+                firebaseUid = firebaseUid,
+                firstName = firstName,
+                lastName = lastName,
+                email = email.trim(),
+                phoneNumber = phone
+            )
+            viewModelScope.launch {
+                try {
+                    ownerDao.insertOwner(noulOwner)
+                    Log.d("Room", "Owner saved to local database")
+                    _authState.value = AuthState()
+                    onSuccess()
+                } catch (e: Exception) {
+                    Log.e("Room", "Error saving owner: ${e.message}")
+                    fail("Database failed: ${e.localizedMessage}")
                 }
             }
-            .addOnFailureListener { error ->
-                Log.e("Auth", "Owner register error: ${error.message}")
-                _authState.value = AuthState(errorMessage = error.message)
-            }
+        }
     }
 
     suspend fun getServiceOptions(type: WashType): List<ServiceOption> = when (type) {
@@ -353,49 +416,34 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
         _authState.value = AuthState(isLoading = true)
 
-        auth.createUserWithEmailAndPassword(email, parola)
-            .addOnSuccessListener { authResult ->
-                Log.d("Auth", "Account created")
-
-                val firebaseUid = authResult.user?.uid
-
-                if (firebaseUid != null) {
-                    val noulClient = Customer(
-                        firebaseUid = firebaseUid,
-                        firstName = prenume,
-                        lastName = nume,
-                        email = email,
-                        phoneNumber = telefon
-                    )
-
-                    val masinaClient = Car(
-                        licensePlate = numarInmatriculare,
-                        customerId = firebaseUid,
-                        model = modelMasina,
-                        status = "Active"
-                    )
-
-                    viewModelScope.launch {
-                        try {
-                            customerDao.insert(noulClient)
-                            carDao.insert(masinaClient)
-                            Log.d("Room", "Customer and car saved")
-
-                            _authState.value = AuthState()
-                            onSuccess()
-                        } catch (e: Exception) {
-                            Log.e("Room", "Error: ${e.message}")
-                            _authState.value = AuthState(
-                                errorMessage = "Database failed: ${e.localizedMessage}"
-                            )
-                        }
-                    }
+        createOrRecoverAccount(email.trim(), parola) { firebaseUid ->
+            Log.d("Auth", "Client account ready")
+            val noulClient = Customer(
+                firebaseUid = firebaseUid,
+                firstName = prenume,
+                lastName = nume,
+                email = email.trim(),
+                phoneNumber = telefon
+            )
+            val masinaClient = Car(
+                licensePlate = numarInmatriculare,
+                customerId = firebaseUid,
+                model = modelMasina,
+                status = "Active"
+            )
+            viewModelScope.launch {
+                try {
+                    customerDao.insert(noulClient)
+                    carDao.insert(masinaClient)
+                    Log.d("Room", "Customer and car saved")
+                    _authState.value = AuthState()
+                    onSuccess()
+                } catch (e: Exception) {
+                    Log.e("Room", "Error: ${e.message}")
+                    fail("Database failed: ${e.localizedMessage}")
                 }
             }
-            .addOnFailureListener { error ->
-                Log.e("Auth", "Register error: ${error.message}")
-                _authState.value = AuthState(errorMessage = error.message)
-            }
+        }
     }
 
     fun registerEmployee(
@@ -414,43 +462,39 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
         _authState.value = AuthState(isLoading = true)
 
-        auth.createUserWithEmailAndPassword(email, password)
-            .addOnSuccessListener { authResult ->
-                val firebaseUid = authResult.user?.uid
-
-                if (firebaseUid != null) {
-                    viewModelScope.launch {
-                        try {
-                            val carWashId = carWashDao.getCarWashIdByAccessCode(accessToken)
-                            if (carWashId == null) {
-                                _authState.value = AuthState(errorMessage = "Invalid access code! Please check and try again.")
-                                return@launch
-                            }
-
-                            val newEmployee = Employee(
+        viewModelScope.launch {
+            // Check the access code BEFORE creating the Firebase account, so a typo doesn't leave
+            // a Firebase account with no employee profile (which then blocks this email).
+            val code = accessToken.trim().uppercase()
+            val carWashId = try { carWashDao.getCarWashIdByAccessCode(code) } catch (e: Exception) { null }
+            if (carWashId == null) {
+                fail("Invalid access code! Please check and try again.")
+                return@launch
+            }
+            createOrRecoverAccount(email.trim(), password) { firebaseUid ->
+                viewModelScope.launch {
+                    try {
+                        employeeDao.insert(
+                            Employee(
                                 firebaseUid = firebaseUid,
                                 carWashId = carWashId,
                                 firstName = firstName,
                                 lastName = lastName,
-                                email = email,
+                                email = email.trim(),
                                 phoneNumber = phone,
-                                accessToken = accessToken
+                                accessToken = code
                             )
-
-                            employeeDao.insert(newEmployee)
-                            Log.d("Auth", "Employee registered and assigned to car wash $carWashId")
-                            _authState.value = AuthState()
-                            onSuccess()
-                        } catch (e: Exception) {
-                            Log.e("Auth", "Employee register error: ${e.message}")
-                            _authState.value = AuthState(errorMessage = "Database failed: ${e.localizedMessage}")
-                        }
+                        )
+                        Log.d("Auth", "Employee registered and assigned to car wash $carWashId")
+                        _authState.value = AuthState()
+                        onSuccess()
+                    } catch (e: Exception) {
+                        Log.e("Auth", "Employee register error: ${e.message}")
+                        fail("Database failed: ${e.localizedMessage}")
                     }
                 }
             }
-            .addOnFailureListener { error ->
-                _authState.value = AuthState(errorMessage = error.message)
-            }
+        }
     }
 
     fun logout() {

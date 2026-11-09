@@ -41,7 +41,14 @@ class CarWashMonitoringViewModel(
     private var currentWashId: Int = -1
     private var currentType: WashType = WashType.NORMAL
 
-    fun initOwner(firebaseUid: String) {
+    /** [wash] = the owner's selected wash; null falls back to their first one. */
+    fun initOwner(firebaseUid: String, wash: com.example.washyourcar.models.OwnerWashRef? = null) {
+        if (wash != null) {
+            currentType = wash.type
+            currentWashId = wash.id
+            loadServices()
+            return
+        }
         viewModelScope.launch {
             val normal = carWashDao.getCarWashByOwnerId(firebaseUid)
             val self = if (normal == null) selfWashDao.getSelfWashByOwnerId(firebaseUid) else null

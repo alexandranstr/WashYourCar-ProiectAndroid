@@ -99,12 +99,23 @@ class OwnerHomeViewModel(
         }
     }
 
-    fun initOwner(firebaseUid: String) {
+    /** Loads the owner and one of their washes: [wash] if given, otherwise their first one. */
+    fun initOwner(firebaseUid: String, wash: com.example.washyourcar.models.OwnerWashRef? = null) {
         viewModelScope.launch {
             _currentOwner.value = ownerDao.getById(firebaseUid)
 
+            // Switching washes: clear what the previous one showed.
+            _carWash.value = null; _selfWash.value = null; _autoWash.value = null
+            _services.value = emptyList(); _selfServices.value = emptyList(); _autoServices.value = emptyList()
+            _employeeCount.value = null; _bayStatuses.value = emptyList(); _bookings.value = emptyList()
+            _reviews.value = emptyList(); _reviewCount.value = 0; _computedRating.value = null
+
             // 1. Verificăm dacă e spălătorie Normală (Clasică)
-            val normal = carWashDao.getCarWashByOwnerId(firebaseUid)
+            val normal = when (wash?.type) {
+                null -> carWashDao.getCarWashByOwnerId(firebaseUid)
+                WashType.NORMAL -> carWashDao.getCarWashById(wash.id)
+                else -> null
+            }
             if (normal != null) {
                 _carWash.value = normal
                 _services.value = carWashServiceDao.getServicesByCarWashId(normal.carWashId)
@@ -114,7 +125,11 @@ class OwnerHomeViewModel(
             }
 
             // 2. Verificăm dacă e Self Wash
-            val self = selfWashDao.getSelfWashByOwnerId(firebaseUid)
+            val self = when (wash?.type) {
+                null -> selfWashDao.getSelfWashByOwnerId(firebaseUid)
+                WashType.SELF -> selfWashDao.getSelfWashById(wash.id)
+                else -> null
+            }
             if (self != null) {
                 _selfWash.value = self
                 _selfServices.value = selfWashServiceDao.getServicesBySelfWashId(self.selfWashId)
@@ -124,7 +139,11 @@ class OwnerHomeViewModel(
             }
 
             // 3. Verificăm dacă e Auto Wash (Automată)
-            val auto = autoWashDao.getAutoWashByOwnerId(firebaseUid)
+            val auto = when (wash?.type) {
+                null -> autoWashDao.getAutoWashByOwnerId(firebaseUid)
+                WashType.AUTOMATIC -> autoWashDao.getAutoWashById(wash.id)
+                else -> null
+            }
             if (auto != null) {
                 _autoWash.value = auto
                 _autoServices.value = autoWashServiceDao.getServicesByAutoWashId(auto.autoWashId)

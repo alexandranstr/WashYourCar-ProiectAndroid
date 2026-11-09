@@ -74,6 +74,8 @@ fun LogInClientScreen(
                 )
             }
 
+            ForgotPasswordRow(email = email, viewModel = viewModel, infoMessage = authState.infoMessage)
+
             val displayError = localErrorMessage ?: authState.errorMessage
 
             if (displayError != null) {

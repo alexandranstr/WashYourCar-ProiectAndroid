@@ -17,6 +17,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.LocalCarWash
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -60,7 +62,10 @@ fun OwnerHomeScreen(
     viewModel: OwnerHomeViewModel,
     bottomBar: @Composable () -> Unit = {},
     onNavigateToSubscriptions: () -> Unit = {},
-    onSetupCarWash: () -> Unit = {}
+    onSetupCarWash: () -> Unit = {},
+    ownerWashes: List<com.example.washyourcar.models.OwnerWashRef> = emptyList(),
+    selectedWash: com.example.washyourcar.models.OwnerWashRef? = null,
+    onSelectWash: (com.example.washyourcar.models.OwnerWashRef) -> Unit = {}
 ) {
     val currentOwner by viewModel.currentOwner.collectAsState()
     val carWash by viewModel.carWash.collectAsState()
@@ -77,8 +82,8 @@ fun OwnerHomeScreen(
     val employeeCount by viewModel.employeeCount.collectAsState()
     RefreshEvery { viewModel.refreshBays() }
 
-    LaunchedEffect(firebaseUid) {
-        viewModel.initOwner(firebaseUid)
+    LaunchedEffect(firebaseUid, selectedWash) {
+        viewModel.initOwner(firebaseUid, selectedWash)
     }
 
     // The owner can have a classic, self-service or automatic wash – show whichever exists.
@@ -138,6 +143,9 @@ fun OwnerHomeScreen(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            if (ownerWashes.isNotEmpty()) {
+                OwnerWashSwitcher(ownerWashes, selectedWash, onSelectWash, onAddWash = onSetupCarWash)
+            }
             androidx.compose.material3.Button(
                 onClick = onNavigateToSubscriptions,
                 modifier = Modifier.fillMaxWidth()
@@ -363,6 +371,49 @@ fun OwnerReviewCard(review: Review) {
             }
             if (review.comment.isNotEmpty()) {
                 Text(review.comment, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+/** Chips for each of the owner's car washes, plus "Add car wash". The selected one drives every owner tab. */
+@Composable
+fun OwnerWashSwitcher(
+    washes: List<com.example.washyourcar.models.OwnerWashRef>,
+    selected: com.example.washyourcar.models.OwnerWashRef?,
+    onSelect: (com.example.washyourcar.models.OwnerWashRef) -> Unit,
+    onAddWash: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            "Your car washes (${washes.size})",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+        )
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ownerLazyItems(washes, key = { "${it.type}-${it.id}" }) { wash ->
+                androidx.compose.material3.FilterChip(
+                    selected = wash.sameWash(selected),
+                    onClick = { onSelect(wash) },
+                    label = { Text("${wash.name.ifBlank { "New wash" }} · ${wash.type.label}") },
+                    leadingIcon = {
+                        Icon(
+                            androidx.compose.material.icons.Icons.Default.LocalCarWash,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                )
+            }
+            item {
+                androidx.compose.material3.AssistChip(
+                    onClick = onAddWash,
+                    label = { Text("Add car wash") },
+                    leadingIcon = {
+                        Icon(androidx.compose.material.icons.Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                )
             }
         }
     }

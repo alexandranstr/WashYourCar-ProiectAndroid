@@ -17,6 +17,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.WashYourCar">
 
+        <!-- Google Pay API (used in TEST environment for owner subscriptions). -->
+        <meta-data
+            android:name="com.google.android.gms.wallet.api.enabled"
+            android:value="true" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

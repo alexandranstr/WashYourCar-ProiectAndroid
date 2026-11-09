@@ -70,6 +70,8 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     // OpenStreetMap (free, no API key)
     implementation("org.osmdroid:osmdroid-android:6.1.20")
+    // Google Pay (TEST environment) for owner subscriptions
+    implementation("com.google.android.gms:play-services-wallet:19.4.0")
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     testImplementation(libs.junit)
@@ -82,5 +84,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.auth)
+    // Cloud Firestore: permanent, cross-device copy of the local Room data (see CloudSync)
+    implementation("com.google.firebase:firebase-firestore")
     implementation("androidx.compose.material:material-icons-extended:1.5.4")
 }

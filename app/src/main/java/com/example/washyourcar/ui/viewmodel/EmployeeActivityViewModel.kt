@@ -24,9 +24,11 @@ class EmployeeActivityViewModel(
 
     private var carWashId: Int = -1
 
-    fun initOwner(firebaseUid: String) {
+    /** [wash] = the owner's selected classic wash; null falls back to their first one. */
+    fun initOwner(firebaseUid: String, wash: com.example.washyourcar.models.OwnerWashRef? = null) {
         viewModelScope.launch {
-            val carWash = carWashDao.getCarWashByOwnerId(firebaseUid)
+            val carWash = if (wash?.type == com.example.washyourcar.data.entities.WashType.NORMAL) carWashDao.getCarWashById(wash.id)
+            else carWashDao.getCarWashByOwnerId(firebaseUid)
             if (carWash != null) {
                 carWashId = carWash.carWashId
                 loadAppointments()
