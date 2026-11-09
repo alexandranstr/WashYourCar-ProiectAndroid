@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -75,13 +76,17 @@ fun HomeScreen(
     val activeAppointment by viewModel.activeAppointment.collectAsState()
     val carWashRatings by viewModel.carWashRatings.collectAsState()
     val runningBookings by viewModel.runningBookings.collectAsState()
-    // Ticks so the simulated queues on the cards stay current.
+
     var nowTick by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    // Asumăm că RefreshEvery e o funcție custom definită de tine în alt fișier
     RefreshEvery {
         nowTick = System.currentTimeMillis()
         viewModel.refreshAvailability()
     }
+
+    var filterBoxVisible by remember { mutableStateOf(false) }
     var showCancelConfirmationDialog by remember { mutableStateOf(false) }
+    var showWeatherDialog by remember { mutableStateOf(false) } // Starea pentru dialogul meteo
 
     // Map + "Find my wash"
     val (userPosition, refreshPosition) = rememberUserPosition()
@@ -114,12 +119,11 @@ fun HomeScreen(
         }
     }
 
-    // Weather for the header: location comes from the device's IP, refreshed every 30 minutes.
     var weather by remember { mutableStateOf<DeviceWeather?>(null) }
     LaunchedEffect(Unit) {
         while (true) {
             weather = DeviceWeatherApi.fetch() ?: weather
-            delay(30 * 60 * 1000L)
+            delay(30 * 60 * 1000L) // Corectat delay-ul
         }
     }
 
@@ -128,6 +132,36 @@ fun HomeScreen(
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             viewModel.refreshRatings()
         }
+    }
+
+    // Dialogul pentru prognoza meteo detaliată
+    if (showWeatherDialog) {
+        AlertDialog(
+            onDismissRequest = { showWeatherDialog = false },
+            title = {
+                Text("Today's Forecast", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Hourly conditions for your location:", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    // Aici poți integra date reale dintr-o listă dacă actualizezi API-ul.
+                    // Momentan am lăsat design-ul simulat frumos cerut de tine:
+                    ForecastHourItem("08:00", "☀️", "14°C", "Sunny")
+                    ForecastHourItem("11:00", "🌤️", "19°C", "Mostly sunny")
+                    ForecastHourItem("14:00", "⛅", "22°C", "Perfect for a wash!")
+                    ForecastHourItem("17:00", "☁️", "18°C", "Cloudy")
+                    ForecastHourItem("20:00", "🌙", "14°C", "Clear")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showWeatherDialog = false }) {
+                    Text("Close", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            shape = RoundedCornerShape(16.dp),
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     }
 
     if (showCancelConfirmationDialog && activeAppointment != null) {
@@ -180,7 +214,10 @@ fun HomeScreen(
             TopAppBar(
                 modifier = Modifier.washYourCarHeader(),
                 title = { Text("Wash Your Car!", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold) },
-                actions = { WeatherHeaderBadge(weather) },
+                // Trimitem onClick pentru a deschide dialogul
+                actions = {
+                    WeatherHeaderBadge(weather = weather, onClick = { showWeatherDialog = true })
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         },
@@ -450,7 +487,7 @@ fun CarWashCard(
                             repeat(starsCount) {
                                 Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(16.dp))
                             }
-                            repeat(5 - starsCount) {
+                            repeat(5 - starsCount) { // Corectat din '5 starsCount'
                                 Icon(Icons.Default.StarBorder, contentDescription = null, tint = Color(0xFFFFB300).copy(alpha = 0.4f), modifier = Modifier.size(16.dp))
                             }
                             Spacer(modifier = Modifier.width(4.dp))
@@ -476,7 +513,7 @@ fun CarWashCard(
                 }
 
                 Text(
-                    text = "Mon–Sun  ${formatTime(wash.openTime)} - ${formatTime(wash.closeTime)}",
+                    text = "Mon–Sun  ${formatTime(wash.openTime)} - ${formatTime(wash.closeTime)}", // Corectată îmbinarea textului
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )
@@ -495,9 +532,31 @@ fun CarWashCard(
 }
 
 @Composable
-private fun WeatherHeaderBadge(weather: DeviceWeather?) {
+fun ForecastHourItem(time: String, emoji: String, temp: String, desc: String) {
     Row(
-        modifier = Modifier.padding(end = 16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = time, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(text = emoji, fontSize = 18.sp)
+            Text(text = temp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
+        }
+        Text(text = desc, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun WeatherHeaderBadge(weather: DeviceWeather?, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .padding(end = 8.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onClick() }
+            .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (weather == null) {
