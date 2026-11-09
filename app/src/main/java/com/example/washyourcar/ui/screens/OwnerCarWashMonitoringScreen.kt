@@ -166,24 +166,20 @@ private fun Context.findActivity(): Activity? {
 
 @Composable
 fun AutomatedLiveCamerasOverlay(onDismiss: () -> Unit) {
-    // MOCKUP: the second value is the NAME of a video file in app/src/main/res/raw (without .mp4).
-    // Later this can come from the database (a stream URL) instead. Empty = no camera linked.
     val cameraList = listOf(
         Pair("Automated Bay 1", "cam_sydney"),
         Pair("Automated Bay 2", "cam_surveillance"),
         Pair("Automated Bay 3", "cam_tunnel"),
-        Pair("Automated Bay 4", "") // no camera connected
+        Pair("Automated Bay 4", "")
     )
 
     var zoomedCameraData by remember { mutableStateOf<Pair<String, String>?>(null) }
     val isZoomed = zoomedCameraData != null
 
-    // Android back button: leave fullscreen first, then leave the camera screen.
     BackHandler {
         if (zoomedCameraData != null) zoomedCameraData = null else onDismiss()
     }
 
-    // Hide the status bar / navigation bar while a camera is fullscreen.
     val view = LocalView.current
     DisposableEffect(isZoomed) {
         val window = view.context.findActivity()?.window
@@ -203,14 +199,12 @@ fun AutomatedLiveCamerasOverlay(onDismiss: () -> Unit) {
     ) {
         val zoomed = zoomedCameraData
         if (zoomed != null) {
-            // ---------- FULLSCREEN CAMERA ----------
             if (zoomed.second.isNotEmpty()) {
                 LocalVideoPlayer(videoName = zoomed.second, isMuted = false)
             } else {
                 ConnectionLostView()
             }
 
-            // Top bar drawn on top of the video
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -242,7 +236,6 @@ fun AutomatedLiveCamerasOverlay(onDismiss: () -> Unit) {
                 }
             }
         } else {
-            // ---------- GRID OF CAMERAS ----------
             Column(modifier = Modifier.fillMaxSize()) {
                 Row(
                     modifier = Modifier
@@ -348,15 +341,9 @@ fun ConnectionLostView(compact: Boolean = false) {
     }
 }
 
-/**
- * Plays app/src/main/res/raw/<videoName>.mp4 in a loop, keeping the video's own proportions
- * (black bars if needed). Uses TextureView + MediaPlayer, which composes reliably inside Compose
- * (unlike VideoView, which could show a black screen after switching to fullscreen).
- */
 @Composable
 fun LocalVideoPlayer(videoName: String, isMuted: Boolean) {
     val context = LocalContext.current
-    // Looks up the file in res/raw. 0 means the file is missing.
     val resId = remember(videoName) {
         context.resources.getIdentifier(videoName, "raw", context.packageName)
     }

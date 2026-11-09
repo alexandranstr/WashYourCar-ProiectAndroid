@@ -84,7 +84,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "wash_your_car_database"
                 )
-                    // în dezvoltare: la schimbarea schemei baza se recreează în loc să dea eroare
+
                     .fallbackToDestructiveMigration(true)
                     .addMigrations(MIGRATION_1_2)
                     .addCallback(AppDatabaseCallback())
