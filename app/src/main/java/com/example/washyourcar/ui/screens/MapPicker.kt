@@ -31,14 +31,14 @@ import java.util.Locale
 /** Result of picking a spot: coordinates plus a best-effort street address and city. */
 data class PickedLocation(val latitude: Double, val longitude: Double, val address: String?, val city: String?)
 
-private val DefaultCenter = GeoPoint(45.6427, 25.5887) // Brașov
+internal val DefaultCenter = GeoPoint(45.6427, 25.5887) // Brașov
 
 /**
  * Esri World Street Map: free street tiles, no API key.
  * (tile.openstreetmap.org returns "403 Access blocked" for this app, so its tiles can't be used.)
  * Esri's URLs are .../tile/{z}/{y}/{x}, hence the custom URL builder.
  */
-private val EsriStreetMap = object : OnlineTileSourceBase(
+internal val EsriStreetMap = object : OnlineTileSourceBase(
     "EsriWorldStreetMap", 0, 19, 256, "",
     arrayOf("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/"),
     "Tiles © Esri — Sources: Esri, HERE, Garmin, OpenStreetMap contributors"

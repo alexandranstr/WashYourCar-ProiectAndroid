@@ -81,8 +81,31 @@ fun HomeScreen(
         nowTick = System.currentTimeMillis()
         viewModel.refreshAvailability()
     }
-    var filterBoxVisible by remember { mutableStateOf(false) }
     var showCancelConfirmationDialog by remember { mutableStateOf(false) }
+
+    // Map + "Find my wash"
+    val (userPosition, refreshPosition) = rememberUserPosition()
+    val needs by viewModel.needs.collectAsState()
+    val matches by viewModel.matches.collectAsState()
+    val matchBusy by viewModel.matchBusy.collectAsState()
+    val aiNote by viewModel.aiNote.collectAsState()
+    var showFindMyWash by remember { mutableStateOf(false) }
+
+    if (showFindMyWash) {
+        FindMyWashSheet(
+            needs = needs,
+            onNeedsChange = viewModel::updateNeeds,
+            busy = matchBusy,
+            aiNote = aiNote,
+            matches = matches,
+            hasLocation = userPosition != null,
+            onAskAi = viewModel::understandRequest,
+            onFind = { viewModel.findMatches(userPosition?.latitude, userPosition?.longitude) },
+            onBackToNeeds = viewModel::clearMatches,
+            onOpenWash = { m -> showFindMyWash = false; onWashClick(m.candidate.item.type, m.candidate.item.id) },
+            onDismiss = { showFindMyWash = false }
+        )
+    }
 
     LaunchedEffect(firebaseUid) {
         if (firebaseUid.isNotEmpty()) {
@@ -334,171 +357,30 @@ fun HomeScreen(
                 }
             }
         } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = "Select City",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                    )
-                    val citiesListState = rememberLazyListState()
-                    LazyRow(
-                        state = citiesListState,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(horizontal = 4.dp)
-                    ) {
-                        item {
-                            FilterChip(
-                                selected = selectedCity == null,
-                                onClick = { viewModel.selectAllCities() },
-                                label = { Text("All Cities") },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                                )
-                            )
-                        }
-                        items(cities) { city ->
-                            FilterChip(
-                                selected = selectedCity == city,
-                                onClick = { viewModel.selectCity(city) },
-                                label = { Text(city) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                                )
-                            )
-                        }
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { viewModel.updateSearchQuery(it) },
-                        placeholder = { Text("Search car wash...") },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        shape = RoundedCornerShape(24.dp),
-                        modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.secondary,
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        singleLine = true,
-                        enabled = true
-                    )
-
-                    IconButton(onClick = { filterBoxVisible = !filterBoxVisible }) {
-                        Icon(
-                            Icons.Default.FilterList,
-                            contentDescription = "Filters",
-                            tint = if (selectedTypes.isNotEmpty()) Color(0xFFFFB300) else MaterialTheme.colorScheme.primary
+            // Explore = map of car washes + pull-up "near you" list + "Find my wash" button.
+            ExploreMapScreen(
+                washes = washes,
+                bayStatusesFor = { wash ->
+                    if (wash.type == WashType.NORMAL) emptyList() else {
+                        val washKey = wash.type.washKey(wash.id)
+                        com.example.washyourcar.models.BayQueueSimulator.statuses(
+                            washKey, wash.normalBays, wash.premiumBays, wash.automaticBays,
+                            runningBookings[washKey].orEmpty(), nowTick
                         )
                     }
-                }
-
-                AnimatedVisibility(visible = filterBoxVisible) {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(2.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            WashType.entries.forEach { type ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { viewModel.toggleType(type) }
-                                        .padding(vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Checkbox(
-                                        checked = selectedTypes.contains(type),
-                                        onCheckedChange = { _ -> viewModel.toggleType(type) },
-                                        colors = CheckboxDefaults.colors(
-                                            checkedColor = MaterialTheme.colorScheme.primary,
-                                            checkmarkColor = MaterialTheme.colorScheme.onPrimary
-                                        )
-                                    )
-                                    Text(
-                                        text = type.label,
-                                        fontSize = 14.sp,
-                                        modifier = Modifier.padding(start = 8.dp),
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (washes.isEmpty()) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = null,
-                            modifier = Modifier.size(80.dp),
-                            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "No car washes found",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Try adjusting your filters or search query",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(14.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(washes, key = { it.key }) { wash ->
-                            val ratingInfo = carWashRatings[wash.key]
-                            val washKey = wash.type.washKey(wash.id)
-                            val bays = if (wash.type == WashType.NORMAL) emptyList() else
-                                com.example.washyourcar.models.BayQueueSimulator.statuses(
-                                    washKey, wash.normalBays, wash.premiumBays, wash.automaticBays,
-                                    runningBookings[washKey].orEmpty(), nowTick
-                                )
-                            CarWashCard(
-                                wash = wash,
-                                rating = ratingInfo?.first,
-                                reviewCount = ratingInfo?.second ?: 0,
-                                bayStatuses = bays,
-                                onClick = { onWashClick(wash.type, wash.id) }
-                            )
-                        }
-                    }
-                }
-            }
+                },
+                ratings = carWashRatings,
+                searchQuery = searchQuery,
+                onSearchChange = { viewModel.updateSearchQuery(it) },
+                selectedTypes = selectedTypes,
+                onToggleType = { viewModel.toggleType(it) },
+                position = userPosition,
+                onRefreshPosition = refreshPosition,
+                highlighted = matches.orEmpty().take(3).map { it.candidate.item },
+                onWashClick = { wash -> onWashClick(wash.type, wash.id) },
+                onFindMyWash = { showFindMyWash = true },
+                modifier = Modifier.fillMaxSize().padding(paddingValues)
+            )
         }
     }
 }

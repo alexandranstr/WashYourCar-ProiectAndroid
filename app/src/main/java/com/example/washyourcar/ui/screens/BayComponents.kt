@@ -61,19 +61,18 @@ fun AvailabilityLine(statuses: List<BayStatus>, modifier: Modifier = Modifier) {
 }
 
 /** Grid of bays with queue length and wait time for each. */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BaysSection(statuses: List<BayStatus>, title: String = "Bays", modifier: Modifier = Modifier) {
     if (statuses.isEmpty()) return
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
         AvailabilityLine(statuses)
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            maxItemsInEachRow = 2
-        ) {
-            statuses.forEach { BayTile(it, Modifier.weight(1f)) }
+        // Two tiles per row (plain Rows: FlowRow crashes with the Compose version at runtime).
+        statuses.chunked(2).forEach { pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                pair.forEach { BayTile(it, Modifier.weight(1f)) }
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
+            }
         }
         Text(
             "Queues are estimated and refresh automatically.",
